@@ -1,0 +1,57 @@
+{% load static %}
+<html>
+<head>
+  <link href="{% static 'css/thnet.css' %}" rel="stylesheet">
+</head>
+<body>
+  <label class="timelineChbox">
+    <input id="clipToTimelineCheckbox" type="checkbox" checked data-toggle="toggle">
+    Clip to timeline
+  </label>
+  <div class="box-body">
+    <div id="thnet" style="width:100%; height:100%;"></div>
+  </div>
+</body>
+</html>
+<script
+  src="https://code.jquery.com/jquery-3.5.1.min.js"
+  integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="
+  crossorigin="anonymous"></script>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/d3-contour.v1.min.js"></script>
+<script src="{% static 'js/thnet.js' %}"></script>
+<script>
+var viewgraph = {
+  "nodes": {{ nodes| safe }},
+  "links": {{ edges| safe }}
+}
+var canvas = document.getElementById('thnet');
+var width = canvas.offsetWidth, height = canvas.offsetHeight;
+var thnet = new ThinkersNet("#thnet", width, height);
+thnet.initGraph();
+thnet.drawGraph();
+
+var checkBox = document.getElementById("clipToTimelineCheckbox");
+checkBox.addEventListener("click", function() {
+  clipNodesToTimeline(checkBox.checked);
+});
+
+function getAuthorInfo(from, to) {
+  $.ajax({
+    type: "POST",
+    url: "/get_author_info",
+    dataType: "json",
+    data: {
+      "from_name": from.getAttribute("title"),
+      "from_id": from.getAttribute("data_authorid"),
+      "to_name": to.getAttribute("title"),
+      "to_id": to.getAttribute("data_authorid"),
+    },
+    success: function(res){
+      console.log("getAuthorInfo success", res);
+    }
+  });
+}
+
+</script>

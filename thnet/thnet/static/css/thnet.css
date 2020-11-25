@@ -1,0 +1,46 @@
+.background {
+  fill: transparent;
+}
+
+.link {
+  stroke: #7cc2fc;
+  stroke-opacity: 0.6;
+  stroke-width: 0.1;
+}
+
+.link.influenced-by {
+  stroke: orange;
+  stroke-opacity: 1;
+  stroke-width: 0.3;
+}
+.link.influences {
+  stroke: lime;
+  stroke-opacity: 1;
+  stroke-width: 0.3;
+}
+
+.label {
+  display: none;
+}
+.label.show {
+  display: block;
+}
+
+.node {
+  stroke: #eee;
+  stroke-width: 1;
+  fill: steelblue;
+}
+.node.selected,
+.node.influenced-by {
+  fill: orange;
+}
+.node.influences {
+  fill: lime;
+}
+
+.timelineChbox {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
