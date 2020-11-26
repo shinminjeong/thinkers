@@ -121,7 +121,7 @@ function highlightSchool(school_name) {
   var philosophers = schoolgroups[school_name];
   console.log("highlightSchool", philosophers)
   for (var i = 0; i < philosophers.length; i++) {
-    d3.select('circle[id="'+philosophers[i]+'"]').classed("selected", true);
+    d3.select('circle[id="'+philosophers[i]+'"]').style("fill", "red");
   }
 }
 
