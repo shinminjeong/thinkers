@@ -41,6 +41,6 @@
 
 .timelineChbox {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 50px;
+  right: 20px;
 }

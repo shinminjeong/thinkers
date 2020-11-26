@@ -1,11 +1,11 @@
 var color = d3.scaleOrdinal(d3.schemeCategory20);
-var simulation, yScale, yAxisG, vis, allNodes, allLinks, allLabels;
+var simulation, xScale, xAxisG, vis, allNodes, allLinks, allLabels;
 var drag = simulation => {
 
   function dragstarted(d) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.event.x;
-    d.fy = d.event.y;
+    d.fx = d.x;
+    d.fy = d.y;
 
     nodeSelected(this);
   }
@@ -17,11 +17,11 @@ var drag = simulation => {
 
   function dragended(d) {
     if (!event.active) simulation.alphaTarget(0);
-    d.fx = null;
+    d.fy = null;
     if(clippingToTimeline) {
-      d.fy = d.savedFy;
+      d.fx = d.savedFx;
     } else {
-      d.fy = null;
+      d.fx = null;
     }
   }
 
@@ -35,25 +35,25 @@ var clippingToTimeline = true;
 function clipNodesToTimeline(shouldClip) {
   if(shouldClip) {
     clippingToTimeline = true;
-    yAxisG.attr("display", "block");
+    xAxisG.attr("display", "block");
     simulation.stop();
     allNodes.each(function(d) {
-      d.fy = d.savedFy;
+      d.fx = d.savedFx;
     })
     simulation.alpha(1).restart();
   } else {
     clippingToTimeline = false;
-    yAxisG.attr("display", "none");
+    xAxisG.attr("display", "none");
     simulation.stop();
     allNodes.each(function(d) {
-      d.fy = null;
+      d.fx = null;
     })
     simulation.alpha(1).restart();
   }
 }
 
-function createYAxis(scale) {
-  return d3.axisLeft(scale)
+function createXAxis(scale) {
+  return d3.axisBottom(scale)
     .ticks(10)
     .tickFormat(function(d) {
         var yearsAd = 100*Math.floor((d/(3600*24*365)+1970)/100);
@@ -150,8 +150,8 @@ class ThinkersNet {
 
   redraw() {
     vis.attr('transform', d3.event.transform);
-    var newYScale = d3.event.transform.rescaleY(yScale);
-    yAxisG.call(createYAxis(newYScale))
+    var newXScale = d3.event.transform.rescaleX(xScale);
+    xAxisG.call(createXAxis(newXScale))
   }
 
   initGraph(){
@@ -168,26 +168,24 @@ class ThinkersNet {
 
   drawGraph() {
     const min_radius = 1;
-    const yScale_margin = 80;
+    const xScale_margin = 80;
 
     const timestamps = viewgraph.nodes.map(d => d.born);
 
     // add Y axis
-    yScale = d3.scaleLinear()
+    xScale = d3.scaleLinear()
       .domain(d3.extent(timestamps)).nice()
-      .range([this.height - yScale_margin, yScale_margin]);
-    var yAxis = createYAxis(yScale)
-
-    yAxisG = this.outer.append("g")
-      .classed('y-axis', true)
-      .call(yAxis)
+      .range([xScale_margin, this.width - xScale_margin]);
+    xAxisG = this.outer.append("g")
+      .classed('x-axis', true)
+      .call(createXAxis(xScale))
       .attr("display", "block")
-      .attr("transform", "translate(" + (this.width * 0.08 + 38) + "," + 0 + ")");
+      .attr("transform", "translate(" + 0 + "," + (this.height - 30) + ")");
 
 
     for (var i = 0; i < viewgraph.nodes.length; i++) {
-      viewgraph.nodes[i].savedFy = yScale(viewgraph.nodes[i].born);
-      viewgraph.nodes[i].fy = yScale(viewgraph.nodes[i].born);
+      viewgraph.nodes[i].savedFx = xScale(viewgraph.nodes[i].born);
+      viewgraph.nodes[i].fx = xScale(viewgraph.nodes[i].born);
     }
 
     const links = viewgraph.links.map(d => Object.create(d));
@@ -215,7 +213,7 @@ class ThinkersNet {
       .attr("data_authorid", d => node_info[d.id]["authorid"])
       .attr("data_school", d => node_info[d.id]["school"])
       .attr("class", "node")
-      .attr("savedFy", d => yScale(d.born))
+      .attr("savedFx", d => xScale(d.born))
       .attr("r", d => Math.sqrt(d.score * 2500 * 3.14))
       .on("click", function() {
         nodeSelected(this);
