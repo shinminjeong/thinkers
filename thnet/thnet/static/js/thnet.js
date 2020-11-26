@@ -65,7 +65,6 @@ function createYAxis(scale) {
     });
 }
 
-
 var selectedNode = connectedNode = null;
 function nodeSelected(node) {
   if (selectedNode === node || connectedNode === node) return;
@@ -115,6 +114,15 @@ function showLabel(node) {
 function hideLabel(node) {
   if (selectedNode === node || connectedNode === node) return;
   d3.select('text[id="'+node.id+'"]').classed("show", false);
+}
+
+
+function highlightSchool(school_name) {
+  var philosophers = schoolgroups[school_name];
+  console.log("highlightSchool", philosophers)
+  for (var i = 0; i < philosophers.length; i++) {
+    d3.select('circle[id="'+philosophers[i]+'"]').classed("selected", true);
+  }
 }
 
 class ThinkersNet {
@@ -205,6 +213,7 @@ class ThinkersNet {
       .attr("data_pcount", d => d.pcount)
       .attr("data_ccount", d => d.ccount)
       .attr("data_authorid", d => d.authorid)
+      .attr("data_school", d => d.school)
       .attr("class", "node")
       .attr("savedFy", d => yScale(d.born))
       .attr("r", d => Math.max(min_radius, Math.sqrt(d.degree)))

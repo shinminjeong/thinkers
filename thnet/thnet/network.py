@@ -34,10 +34,11 @@ def load_philosopher_net():
         pid = p["pageid"]
         ptime = p["born"] if p["born"] else 0
         pname = p["name"] if p["name"] else ""
+        pschool = ";".join([handle_school_name(s["name"]) for s in p["school"]]) if p["school"] else ""
         if "MAG_id" in p:
-            G.add_node(pid, born=ptime, name=pname, authorid=p["MAG_id"], pcount=p["MAG_pcount"], ccount=p["MAG_ccount"])
+            G.add_node(pid, born=ptime, name=pname, school=pschool, authorid=p["MAG_id"], pcount=p["MAG_pcount"], ccount=p["MAG_ccount"])
         else:
-            G.add_node(pid, born=ptime, name=pname)
+            G.add_node(pid, born=ptime, name=pname, school=pschool)
 
     for i, p in enumerate(data):
         if p["influenced"]:
@@ -51,6 +52,17 @@ def load_philosopher_net():
     print("load_philosopher_net -- finish")
     return
 
+def handle_school_name(name):
+    lname = name.lower()
+    lname = lname.replace(" philosophy", "") # e.g. analytic == analitic philosophy
+    lname = lname.replace("analytical", "analytic")
+    lname = lname.replace("aristotelianism", "aristotelian")
+    lname = lname.replace("realist", "realism")
+    lname = lname.replace("hegelianism", "hegelian")
+    lname = lname.replace("phenomenological", "phenomenology")
+    lname = lname.replace("phenomenalism", "phenomenology")
+    lname = lname.replace("post-kantianism", "post-kantian")
+    return lname
 
 # data cleaning rule
 # https://github.com/S4N0I/theschoolofathens/blob/master/build_graph/transform.py
@@ -157,12 +169,32 @@ def reference_btw_authors(a_from, a_to):
 
     json.dump(edge_data, open("data/edges_{}_{}.json".format(a_from, a_to), "w"))
 
+
+def school_analysis(data):
+    school_map = {}
+    school_name = []
+    for id, value in data.items():
+        schools = value.split(";")
+        if len(schools) == 0 or schools[0] == "":
+            continue
+
+        school_name.extend(schools)
+        for s in schools:
+            if s not in school_map:
+                school_map[s] = []
+            school_map[s].append(id)
+    print(Counter(school_name).most_common(10))
+    # print(school_map)
+    return school_map
+
+
 def get_thnet():
-    # search_philosopher_from_MAG();
-    load_philosopher_net();
+    # search_philosopher_from_MAG()
+    load_philosopher_net()
     G = nx.read_gexf("data/philosophers.gexf")
     ntime = nx.get_node_attributes(G, "born")
     nname = nx.get_node_attributes(G, "name")
+    n_school = nx.get_node_attributes(G, "school")
     n_authorid = nx.get_node_attributes(G, "authorid")
     n_pcount = nx.get_node_attributes(G, "pcount")
     n_ccount = nx.get_node_attributes(G, "ccount")
@@ -171,6 +203,8 @@ def get_thnet():
     print("All nodes and edges:", len(G.nodes), len(G.edges), len(n_authorid))
     # save_papers_from_authorid(n_authorid.values())
     # reference_btw_authors(G)
+
+    schools = school_analysis(n_school)
 
     nodes = [{
         "id": n,
@@ -188,7 +222,7 @@ def get_thnet():
         "value": 1
     } for e in G.edges() if e[0] in filtered_nodeid and e[1] in filtered_nodeid]
     print("Filtered nodes and edges:", len(nodes), len(edges))
-    return nodes, edges
+    return nodes, edges, schools
 
 pa_data = None
 def count_paperref(influence_from, influence_to):
