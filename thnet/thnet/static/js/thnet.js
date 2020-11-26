@@ -4,8 +4,8 @@ var drag = simulation => {
 
   function dragstarted(d) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
+    d.fx = d.event.x;
+    d.fy = d.event.y;
 
     nodeSelected(this);
   }
