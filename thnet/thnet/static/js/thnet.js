@@ -210,13 +210,13 @@ class ThinkersNet {
       .enter().append("circle")
       .attr("id", d => d.id)
       .attr("title", d => d.name)
-      .attr("data_pcount", d => d.pcount)
-      .attr("data_ccount", d => d.ccount)
-      .attr("data_authorid", d => d.authorid)
-      .attr("data_school", d => d.school)
+      .attr("data_pcount", d => node_info[d.id]["pcount"])
+      .attr("data_ccount", d => node_info[d.id]["ccount"])
+      .attr("data_authorid", d => node_info[d.id]["authorid"])
+      .attr("data_school", d => node_info[d.id]["school"])
       .attr("class", "node")
       .attr("savedFy", d => yScale(d.born))
-      .attr("r", d => Math.max(min_radius, Math.sqrt(d.degree)))
+      .attr("r", d => Math.sqrt(d.score * 2500 * 3.14))
       .on("click", function() {
         nodeSelected(this);
       })

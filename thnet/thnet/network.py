@@ -193,7 +193,6 @@ def get_thnet():
     load_philosopher_net()
     G = nx.read_gexf("data/philosophers.gexf")
     ntime = nx.get_node_attributes(G, "born")
-    nname = nx.get_node_attributes(G, "name")
     n_school = nx.get_node_attributes(G, "school")
     n_authorid = nx.get_node_attributes(G, "authorid")
     n_pcount = nx.get_node_attributes(G, "pcount")
@@ -206,23 +205,14 @@ def get_thnet():
 
     schools = school_analysis(n_school)
 
-    nodes = [{
+    node_info = { n:{
         "id": n,
-        "born": ntime[n],
-        "name": nname[n] if n in nname else "",
         "authorid": n_authorid[n] if n in n_authorid else 0,
         "pcount": n_pcount[n] if n in n_pcount else 0,
         "ccount": n_ccount[n] if n in n_ccount else 0,
         "degree": G.degree[n]
-    } for n in G.nodes() if n in ntime] # filter out node without born_time
-    filtered_nodeid = [n["id"] for n in nodes]
-    edges = [{
-        "source": e[0],
-        "target": e[1],
-        "value": 1
-    } for e in G.edges() if e[0] in filtered_nodeid and e[1] in filtered_nodeid]
-    print("Filtered nodes and edges:", len(nodes), len(edges))
-    return nodes, edges, schools
+    } for n in G.nodes() if n in ntime} # filter out node without born_time
+    return node_info, schools
 
 pa_data = None
 def count_paperref(influence_from, influence_to):
