@@ -133,11 +133,15 @@ def save_papers_from_authorid(authorlist):
     json.dump(data, open("data/authorpapers.json", "w"))
 
 
-def reference_btw_authors(G):
+def reference_btw_authors(a_from, a_to):
+    load_philosopher_net();
+    G = nx.read_gexf("data/philosophers.gexf")
+
     edges = G.edges()
     nodes = G.nodes()
     edge_data = {}
     for i, e in enumerate(edges):
+        if i < a_from or i >= a_to: continue
         a1 = nodes[e[0]]
         a2 = nodes[e[1]]
         if "authorid" in a1 and "authorid" in a2:
@@ -150,8 +154,8 @@ def reference_btw_authors(G):
             print("{}/{}".format(i, len(edges)), a2["name"], "-->", a1["name"], refcount2)
             if refcount2 > 0:
                 edge_data["{}_{}".format(a2["authorid"], a1["authorid"])] = refcount2
-    json.dump(edge_data, open("data/edges.json", "w"))
 
+    json.dump(edge_data, open("data/edges_{}_{}.json".format(a_from, a_to), "w"))
 
 def get_thnet():
     # search_philosopher_from_MAG();
@@ -166,7 +170,7 @@ def get_thnet():
 
     print("All nodes and edges:", len(G.nodes), len(G.edges), len(n_authorid))
     # save_papers_from_authorid(n_authorid.values())
-    reference_btw_authors(G)
+    # reference_btw_authors(G)
 
     nodes = [{
         "id": n,
