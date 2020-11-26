@@ -26,6 +26,10 @@
   display: block;
 }
 
+.hull {
+  opacity: 0.2;
+}
+
 .node {
   stroke: #eee;
   stroke-width: 1;

@@ -183,9 +183,11 @@ def school_analysis(data):
             if s not in school_map:
                 school_map[s] = []
             school_map[s].append(id)
-    print(Counter(school_name).most_common(10))
-    # print(school_map)
-    return school_map
+
+    top_school_names = Counter(school_name).most_common(20)
+    top_schools = {s[0]:{"rank":i, "list":school_map[s[0]]} for i, s in enumerate(top_school_names)}
+    print(top_schools)
+    return top_schools
 
 
 def get_thnet():
@@ -204,14 +206,16 @@ def get_thnet():
     # reference_btw_authors(G)
 
     schools = school_analysis(n_school)
+    filtered_nodes = [n for n in G.nodes() if n in ntime] # filter out node without born_time
 
-    node_info = { n:{
+    node_info = {n:{
         "id": n,
         "authorid": n_authorid[n] if n in n_authorid else 0,
         "pcount": n_pcount[n] if n in n_pcount else 0,
         "ccount": n_ccount[n] if n in n_ccount else 0,
-        "degree": G.degree[n]
-    } for n in G.nodes() if n in ntime} # filter out node without born_time
+        "degree": G.degree[n],
+        "school": n_school[n] if n in n_school else "",
+    } for n in filtered_nodes}
     return node_info, schools
 
 pa_data = None

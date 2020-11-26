@@ -1,4 +1,4 @@
-var color = d3.scaleOrdinal(d3.schemeCategory20);
+var color = d3.scaleOrdinal(d3.schemeSet3);
 var simulation, xScale, xAxisG, vis, allNodes, allLinks, allLabels;
 var drag = simulation => {
 
@@ -116,13 +116,40 @@ function hideLabel(node) {
   d3.select('text[id="'+node.id+'"]').classed("show", false);
 }
 
-
 function highlightSchool(school_name) {
   var philosophers = schoolgroups[school_name];
-  console.log("highlightSchool", philosophers)
-  for (var i = 0; i < philosophers.length; i++) {
-    d3.select('circle[id="'+philosophers[i]+'"]').style("fill", "red");
+  var gid = philosophers.rank;
+  // console.log("highlightSchool", philosophers)
+  var selectedNodes = [];
+  for (var i = 0; i < philosophers.list.length; i++) {
+    var n = d3.select('circle[id="'+philosophers.list[i]+'"]');
+    n.style("stroke", "cyan");
+    selectedNodes.push(n.datum());
   }
+  var d = convexHulls(selectedNodes, gid);
+  thnet.drawHull(gid, drawCluster(d));
+}
+
+function convexHulls(nodes, hullid) {
+  var offset = 3;
+  var hull = [];
+  // create point sets
+  for (var k=0; k<nodes.length; ++k) {
+    var n = nodes[k];
+    if (n.size) continue;
+    hull.push([n.x-offset, n.y-offset]);
+    hull.push([n.x-offset, n.y+offset]);
+    hull.push([n.x+offset, n.y-offset]);
+    hull.push([n.x+offset, n.y+offset]);
+  }
+  // create convex hull
+  return {group: hullid, path: d3.polygonHull(hull)};
+}
+
+function drawCluster(d) {
+  if (isNaN(d.path[0][0])) return "";
+  var curve = d3.line().curve(d3.curveCardinalClosed.tension(0.8));
+  return curve(d.path);
 }
 
 class ThinkersNet {
@@ -155,6 +182,7 @@ class ThinkersNet {
   }
 
   initGraph(){
+    this.hullg = vis.append("g");
     this.linkg = vis.append("g");
     this.nodeg = vis.append("g");
   }
@@ -164,6 +192,14 @@ class ThinkersNet {
     this.outer.selectAll(".node").remove();
     this.outer.selectAll(".nlabel").remove();
     this.outer.selectAll(".elabel").remove();
+    this.outer.selectAll(".hull").remove();
+  }
+
+  drawHull(hid, path) {
+    this.hullg.append("path")
+      .attr("class", "hull")
+      .attr("d", path)
+      .style("fill", color(hid));
   }
 
   drawGraph() {
