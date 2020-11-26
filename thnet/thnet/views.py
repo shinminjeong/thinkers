@@ -7,10 +7,10 @@ import networkx as nx
 from .network import get_thnet, count_paperref
 
 def main(request):
-    nodes, edges = get_thnet()
+    node_info, schools = get_thnet()
     return render(request, "main.html", {
-        "nodes": nodes,
-        "edges": edges
+        "node_info": node_info,
+        "schools": schools
     })
 
 @csrf_exempt
@@ -18,6 +18,4 @@ def get_author_info(request):
     print("!!!get_author_info", request.POST)
     a_from = request.POST.get("from_id")
     a_to = request.POST.get("to_id")
-    print("get_author_info", request.POST.get("from_name"), "-->", request.POST.get("to_name"))
-    count = count_paperref(a_from, a_to)
-    return JsonResponse({"data": count})
+    return JsonResponse({"data": 0})
