@@ -27,7 +27,9 @@
 }
 
 .hull {
-  opacity: 0.2;
+  opacity: 0.5;
+  stroke-width: 0.5;
+  stroke: #000;
 }
 
 .node {

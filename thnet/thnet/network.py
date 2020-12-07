@@ -23,6 +23,15 @@ def search_philosopher_from_MAG():
             print(i, "[{}]".format(pname), "Not Found")
     json.dump(data, open("data/philosophers_MAG.json", "w"))
 
+def update_info_from_wiki():
+    data_mag = json.load(open("data/philosophers_MAG.json", "r"))
+    data_wiki = json.load(open("data/philosophers.json", "r"))
+    data_wiki = clean(data_wiki)
+    data_from = {v["pageid"]:v for v in data_wiki}
+    for p in data_mag:
+        p["school"] = data_from[p["pageid"]]["school"]
+    json.dump(data_mag, open("data/philosophers_MAG.json", "w"))
+
 
 def load_philosopher_net():
     print("load_philosopher_net -- start loading")
@@ -34,7 +43,7 @@ def load_philosopher_net():
         pid = p["pageid"]
         ptime = p["born"] if p["born"] else 0
         pname = p["name"] if p["name"] else ""
-        pschool = ";".join([handle_school_name(s["name"]) for s in p["school"]]) if p["school"] else ""
+        pschool = ",".join([create_school_map(s["pageid"], s["name"]) for s in p["school"]]) if p["school"] else ""
         if "MAG_id" in p:
             G.add_node(pid, born=ptime, name=pname, school=pschool, authorid=p["MAG_id"], pcount=p["MAG_pcount"], ccount=p["MAG_ccount"])
         else:
@@ -52,17 +61,14 @@ def load_philosopher_net():
     print("load_philosopher_net -- finish")
     return
 
-def handle_school_name(name):
-    lname = name.lower()
-    lname = lname.replace(" philosophy", "") # e.g. analytic == analitic philosophy
-    lname = lname.replace("analytical", "analytic")
-    lname = lname.replace("aristotelianism", "aristotelian")
-    lname = lname.replace("realist", "realism")
-    lname = lname.replace("hegelianism", "hegelian")
-    lname = lname.replace("phenomenological", "phenomenology")
-    lname = lname.replace("phenomenalism", "phenomenology")
-    lname = lname.replace("post-kantianism", "post-kantian")
-    return lname
+school_name_map = {}
+def create_school_map(school_id, name):
+    global school_name_map
+    if school_id == None:
+        return "noinfo"
+    if school_id not in school_name_map:
+        school_name_map[school_id] = name;
+    return school_id
 
 # data cleaning rule
 # https://github.com/S4N0I/theschoolofathens/blob/master/build_graph/transform.py
@@ -171,27 +177,52 @@ def reference_btw_authors(a_from, a_to):
 
 
 def school_analysis(data):
-    school_map = {}
-    school_name = []
+    global school_name_map
+    school_philosopher_map = {}
     for id, value in data.items():
-        schools = value.split(";")
-        if len(schools) == 0 or schools[0] == "":
-            continue
-
-        school_name.extend(schools)
+        schools = value.split(",")
         for s in schools:
-            if s not in school_map:
-                school_map[s] = []
-            school_map[s].append(id)
+            if s not in school_philosopher_map:
+                school_philosopher_map[s] = []
+            school_philosopher_map[s].append(id)
 
-    top_school_names = Counter(school_name).most_common(20)
-    top_schools = {s[0]:{"rank":i, "list":school_map[s[0]]} for i, s in enumerate(top_school_names)}
-    print(top_schools)
+    school_counts = [(k, len(v)) for k, v in school_philosopher_map.items() if k != "" and k != "noinfo"]
+    top_school_names = sorted(school_counts, key=itemgetter(1), reverse=True)[:20]
+    top_schools = {s[0]:{"name":school_name_map[s[0]], "rank":i, "list":school_philosopher_map[s[0]]} for i, s in enumerate(top_school_names)}
+    # print(top_schools)
     return top_schools
+
+
+def ref_edge(G, aidmap):
+    data = {}
+    for i in range(0, 4500, 500):
+        data.update(json.load(open("data/edges_{}_{}.json".format(i, i+500), "r")))
+    print("{} out of {} edges have citation records".format(len(data), len(G.edges())))
+
+    e1_sum = []
+    e2_sum = []
+    rev_count = []
+    edge_info = {}
+    for u, v in G.edges():
+        id = "{}_{}".format(aidmap[u] if u in aidmap else "", aidmap[v] if v in aidmap else "")
+        id_rev = "{}_{}".format(aidmap[v] if v in aidmap else "", aidmap[u] if u in aidmap else "")
+        e1 = data[id] if id in data else 0
+        e2 = data[id_rev] if id_rev in data else 0
+        if e1 or e2:
+            rev_count.append((e1, e2))
+            edge_info["{}_{}".format(u,v)] = e2+e1
+            print((e2, e1))
+        e1_sum.append(e1)
+        e2_sum.append(e2)
+        G[u][v]["s->t"] = e2
+        G[u][v]["t->s"] = e1
+    print(sum(e2_sum), sum(e1_sum))
+    return edge_info
 
 
 def get_thnet():
     # search_philosopher_from_MAG()
+    update_info_from_wiki()
     load_philosopher_net()
     G = nx.read_gexf("data/philosophers.gexf")
     ntime = nx.get_node_attributes(G, "born")
@@ -204,6 +235,7 @@ def get_thnet():
     print("All nodes and edges:", len(G.nodes), len(G.edges), len(n_authorid))
     # save_papers_from_authorid(n_authorid.values())
     # reference_btw_authors(G)
+    edge_info = ref_edge(G, n_authorid)
 
     schools = school_analysis(n_school)
     filtered_nodes = [n for n in G.nodes() if n in ntime] # filter out node without born_time
@@ -216,7 +248,7 @@ def get_thnet():
         "degree": G.degree[n],
         "school": n_school[n] if n in n_school else "",
     } for n in filtered_nodes}
-    return node_info, schools
+    return node_info, edge_info, schools
 
 pa_data = None
 def count_paperref(influence_from, influence_to):

@@ -1,5 +1,6 @@
 var color = d3.scaleOrdinal(d3.schemeSet3);
 var simulation, xScale, xAxisG, vis, allNodes, allLinks, allLabels;
+var hulls, allHulls;
 var drag = simulation => {
 
   function dragstarted(d) {
@@ -65,40 +66,26 @@ function createXAxis(scale) {
     });
 }
 
-var selectedNode = connectedNode = null;
+var selectedNode = null;
 function nodeSelected(node) {
-  if (selectedNode === node || connectedNode === node) return;
-  if(selectedNode != null) { // select connected node
-    allLabels.classed("show", function(n){ return n.id == node.id || n.id == selectedNode.id})
-    console.log("nodeSelected", node.getAttribute("title"), node.classList.contains("influences"), node.classList.contains("influenced-by"))
-    connectedNode = node;
-    if (node.getAttribute("data_authorid") != "0") {
-      if (node.classList.contains("influenced-by"))
-        getAuthorInfo(selectedNode, connectedNode);
-      if (node.classList.contains("influences"))
-        getAuthorInfo(connectedNode, selectedNode);
-    }
-
-  } else { // select the center node
-    console.log("nodeSelected", node.id, node.getAttribute("title"), node)
-    allNodes.classed("selected", function(n){ return n.id == node.id});
-    allLinks.classed("influenced-by", function(l){ return l.target.id == node.id})
-    allLinks.classed("influences", function(l){ return l.source.id == node.id})
-    allLabels.classed("show", function(n){ return n.id == node.id})
-    d3.selectAll(".link.influenced-by").each(function(d, l) {
-      d3.select(allNodes._groups[0][d.source.index]).classed("influenced-by", true);
-      // d3.select(allLabels._groups[0][d.source.index]).classed("show", true);
-    });
-    d3.selectAll(".link.influences").each(function(d, l) {
-      d3.select(allNodes._groups[0][d.target.index]).classed("influences", true);
-      // d3.select(allLabels._groups[0][d.target.index]).classed("show", true);
-    });
-    selectedNode = node;
-  }
+  if (selectedNode === node) return;
+  console.log("nodeSelected", node.id, node.getAttribute("title"), node)
+  allNodes.classed("selected", function(n){ return n.id == node.id});
+  allLinks.classed("influenced-by", function(l){ return l.target.id == node.id})
+  allLinks.classed("influences", function(l){ return l.source.id == node.id})
+  allLabels.classed("show", function(n){ return n.id == node.id})
+  d3.selectAll(".link.influenced-by").each(function(d, l) {
+    d3.select(allNodes._groups[0][d.source.index]).classed("influenced-by", true);
+    // d3.select(allLabels._groups[0][d.source.index]).classed("show", true);
+  });
+  d3.selectAll(".link.influences").each(function(d, l) {
+    d3.select(allNodes._groups[0][d.target.index]).classed("influences", true);
+    // d3.select(allLabels._groups[0][d.target.index]).classed("show", true);
+  });
+  selectedNode = node;
 }
 
 function resetSelectedNode() {
-  selectedNode = connectedNode = null;
   allNodes.classed("selected", false);
   allNodes.classed("influenced-by", false);
   allNodes.classed("influences", false);
@@ -112,25 +99,38 @@ function showLabel(node) {
 }
 
 function hideLabel(node) {
-  if (selectedNode === node || connectedNode === node) return;
+  if (selectedNode === node) return;
   d3.select('text[id="'+node.id+'"]').classed("show", false);
 }
 
-function highlightSchool(school_name) {
-  var philosophers = schoolgroups[school_name];
-  var gid = philosophers.rank;
-  // console.log("highlightSchool", philosophers)
-  var selectedNodes = [];
-  for (var i = 0; i < philosophers.list.length; i++) {
-    var n = d3.select('circle[id="'+philosophers.list[i]+'"]');
-    n.style("stroke", "cyan");
-    selectedNodes.push(n.datum());
+function highlightAllSchools(flag) {
+  for (var i in schoolgroups){
+    highlightSchool(i, flag);
   }
-  var d = convexHulls(selectedNodes, gid);
-  thnet.drawHull(gid, drawCluster(d));
 }
 
-function convexHulls(nodes, hullid) {
+function highlightSchool(gid, flag) {
+  var n = d3.select('path.hull[id="'+gid+'"]');
+  console.log("highlightSchool", schoolgroups[gid].name, hulls[gid].length);
+  if (flag) {
+    n.attr("display", "visible");
+    for (var i = 0; i < hulls[gid].length; i++) {
+      d3.selectAll(".node").filter(function(d) { return d.index === hulls[gid][i].index }).style("fill", color(gid));
+    }
+  } else {
+    n.attr("display", "none");
+  }
+}
+
+function createConvexHull() {
+  var groups = [];
+  for (var gid in schoolgroups) {
+    groups.push({id:gid, name:schoolgroups[gid].name, path:convexHulls(hulls[gid])})
+  }
+  return groups;
+}
+
+function convexHulls(nodes) {
   var offset = 3;
   var hull = [];
   // create point sets
@@ -143,13 +143,26 @@ function convexHulls(nodes, hullid) {
     hull.push([n.x+offset, n.y+offset]);
   }
   // create convex hull
-  return {group: hullid, path: d3.polygonHull(hull)};
+  return d3.polygonHull(hull);
 }
 
 function drawCluster(d) {
   if (isNaN(d.path[0][0])) return "";
   var curve = d3.line().curve(d3.curveCardinalClosed.tension(0.8));
   return curve(d.path);
+}
+
+function nodeRadius(score) {
+  return Math.sqrt(score * 2500 * 3.14)
+}
+
+function groupSimilarity(a, b) {
+  var n1 = node_info[a].school.split(","),
+      n2 = node_info[b].school.split(",");
+  var set1 = n1[0]==""?new Set():new Set(n1),
+      set2 = n2[0]==""?new Set():new Set(n2);
+  let intersect= new Set([...set1].filter(i => set2.has(i)));
+  return intersect.size;
 }
 
 class ThinkersNet {
@@ -218,7 +231,6 @@ class ThinkersNet {
       .attr("display", "block")
       .attr("transform", "translate(" + 0 + "," + (this.height - 30) + ")");
 
-
     for (var i = 0; i < viewgraph.nodes.length; i++) {
       viewgraph.nodes[i].savedFx = xScale(viewgraph.nodes[i].born);
       viewgraph.nodes[i].fx = xScale(viewgraph.nodes[i].born);
@@ -228,16 +240,34 @@ class ThinkersNet {
     const nodes = viewgraph.nodes.map(d => Object.create(d));
 
     // draw force directed network
-    simulation = d3.forceSimulation(nodes)
-      .force("link", d3.forceLink(links).id(d => d.id))
+    simulation = d3.forceSimulation(nodes).alpha(0.3)
+      .force("link", d3.forceLink(links).id(d => d.id)
+        .distance(function(l, i) {
+          // return 200;
+          return 200/(1+10*groupSimilarity(l.source.id, l.target.id));
+          // shorter edge length if source and target have a high group similarity
+        })
+        .strength(function(l, i) {
+          return 0.5;
+        }))
+      .force("collide", d3.forceCollide().radius(d => nodeRadius(d.score)+1).iterations(2))
       .force("charge", d3.forceManyBody())
-      .force("center", d3.forceCenter(this.width / 2, this.height / 2));
+      .force("center", d3.forceCenter(this.width / 2, this.height / 2))
+      .force("x", d3.forceX(1))
+      .force("y", d3.forceY(1));
 
     allLinks = this.linkg.selectAll(".link")
       .data(links)
       .enter().append("line")
       .attr("id", d => d.source.index + "_" + d.target.index)
-      .attr("class", "link");
+      .attr("class", "link")
+      // .attr("stroke", function(d) {
+      //   var id = d.source.id + "_" + d.target.id;
+      //   console.log(edge_info[id])
+      //   if (edge_info[id])
+      //     return "black";
+      //   else return "transparent";
+      // });
 
     allNodes = this.nodeg.selectAll(".node")
       .data(nodes)
@@ -250,7 +280,7 @@ class ThinkersNet {
       .attr("data_school", d => node_info[d.id]["school"])
       .attr("class", "node")
       .attr("savedFx", d => xScale(d.born))
-      .attr("r", d => Math.sqrt(d.score * 2500 * 3.14))
+      .attr("r", d => nodeRadius(d.score))
       .on("click", function() {
         nodeSelected(this);
       })
@@ -261,6 +291,25 @@ class ThinkersNet {
         hideLabel(this);
       })
       .call(drag(simulation));
+
+    hulls = {};
+    for (var gid in schoolgroups) {
+      var selectedNodes = [];
+      for (var i = 0; i < schoolgroups[gid].list.length; i++) {
+        var n = d3.select('circle[id="'+schoolgroups[gid].list[i]+'"]');
+        selectedNodes.push(n.datum());
+      }
+      hulls[gid] = selectedNodes;
+    }
+
+    allHulls = this.hullg.selectAll("path.hull")
+      .data(createConvexHull())
+    .enter().append("path")
+      .attr("class", "hull")
+      .attr("id", d => d.id)
+      .attr("d", drawCluster)
+      .attr("display", "none")
+      .style("fill", d => color(d.id));
 
     allLabels = this.nodeg.selectAll(".label")
       .data(nodes)
@@ -282,6 +331,8 @@ class ThinkersNet {
       allLabels
           .attr("x", d => d.x+3)
           .attr("y", d => d.y+3);
+      allHulls.data(createConvexHull())
+          .attr("d", drawCluster);
     });
 
     this.rect.on("click", function() {

@@ -24,6 +24,7 @@
 <script src="{% static 'js/graph-data.js' %}"></script>
 <script>
 var node_info = {{ node_info| safe }};
+var edge_info = {{ edge_info| safe }};
 var schoolgroups = {{ schools| safe }};
 var canvas = document.getElementById('thnet');
 var width = canvas.offsetWidth, height = canvas.offsetHeight;

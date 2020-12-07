@@ -27895,7 +27895,17 @@
         ],
         "name": "Karl Marx",
         "pageid": "16743",
-        "school": [],
+        "school": [
+            {
+                "name": "Continental philosophy",
+                "pageid": "309641",
+                "url": "/wiki/Continental_philosophy"
+            },
+            {
+                "name": "Marxism",
+                "pageid": "1904053",
+                "url": "/wiki/Marxism"
+            }],
         "url": "https://en.wikipedia.org/wiki/Karl_Marx"
     },
     {
@@ -40887,7 +40897,63 @@
         ],
         "name": "Georg Wilhelm Friedrich Hegel",
         "pageid": "12598",
-        "school": [],
+        "school": [
+          {
+              "name": "Continental philosophy",
+              "pageid": "309641",
+              "url": "/wiki/Continental_philosophy"
+          },
+          {
+              "name": "German idealism",
+              "pageid": "219447",
+              "url": "/wiki/German_idealism"
+          },
+          {
+              "name": "Objective idealism",
+              "pageid": "494094",
+              "url": "/wiki/Objective_idealism"
+          },
+          {
+              "name": "Absolute idealism",
+              "pageid": "1100734",
+              "url": "/wiki/Absolute_idealism"
+          },
+          {
+              "name": "Hegelianism",
+              "pageid": "43472912",
+              "url": "/wiki/Hegelianism"
+          },
+          {
+              "name": "Historicism",
+              "pageid": "14329",
+              "url": "/wiki/Historicism"
+          },
+          {
+              "name": "Naturphilosophie",
+              "pageid": "2225085",
+              "url": "wiki/Naturphilosophie"
+          },
+          {
+              "name": "Epistemic coherentism",
+              "pageid": "275053",
+              "url": "/wiki/Epistemic_coherentism"
+          },
+          {
+              "name": "Conceptualism",
+              "pageid": "633037",
+              "url": "/wiki/Conceptualism"
+          },
+          {
+              "name": "Empirical realism",
+              "pageid": "347543",
+              "url": "/wiki/Empirical_realism"
+          },
+          {
+              "name": "Coherence theory of truth",
+              "pageid": "1972167",
+              "url": "/wiki/Coherence_theory_of_truth"
+          }
+        ],
         "url": "https://en.wikipedia.org/wiki/Georg_Wilhelm_Friedrich_Hegel"
     },
     {
