@@ -1,0 +1,478 @@
+{% load static %}
+<div class="statpane-left">
+  <div class="wrapper">
+    <b>Select YearRange</b>
+    <div style="float:right;padding:0 3">
+      <i class="fa fa-circle" style="color:#ABBD81"></i> Publication
+      <i class="fa fa-circle" style="color:#F47E60"></i> Citation
+    </div>
+    <div id="div_charts" style="width:375px;height:230px;overflow:hidden">
+      <div id="pub_chart" style="height:90px;"></div>
+      <div id="publication-range" class="yearslider"></div>
+      <div id="citation-range" class="yearslider"></div>
+      <div id="cite_chart" style="height:110px;"></div>
+    </div>
+  </div>
+</div>
+<div class="statpane-right">
+  <div class="wrapper">
+    <b> Statictics: Total</b> <span class="stat">{{ yearSlider.pubrange.2 }}</span> years of publication
+    <span class="stat">{{ yearSlider.pubrange.0 }}~{{ yearSlider.pubrange.1 }}</span><br>
+    <div style="padding-left:10px">
+      <span id="num_papers" class="stat">{{ stats.num_papers }}</span> papers total,
+      average <span id="avg_papers" class="stat">{{ stats.avg_papers }}</span> per year<br>
+      <span id="num_refs" class="stat">{{ stats.num_refs }}</span> references total,
+      average <span id="avg_refs" class="stat">{{ stats.avg_refs }}</span> per paper<br>
+      <span id="num_cites" class="stat">{{ stats.num_cites }}</span> citations total,
+      average <span id="avg_cites" class="stat">{{ stats.avg_cites }}</span> per paper<br>
+    </div>
+  </div>
+</div>
+<div class="statpane-control" style="border-top:1px #eee solid;">
+  <div class="wrapper">
+    <b>Selected Range (for flower)</b>
+    <div style="padding-top:5px; padding-left:10px">
+      Publications:
+        <span class="label-as-badge" id="pub-lower-value"></span>~
+        <span class="label-as-badge" id="pub-upper-value"></span>
+      Citations:
+        <span class="label-as-badge" id="cit-lower-value"></span>~
+        <span class="label-as-badge" id="cit-upper-value"></span> <br>
+      <span id="selected_publication_link" class="link"><span id="selected_num_papers" class="stat">???</span> papers</span>,
+      <span id="selected_citation_link" class="link"><span id="selected_num_cites" class="stat">???</span> citations</span>
+    </div>
+    <div style="padding-top:10px">
+      <b>Include self citations</b>
+      <input class="self-cite" type="checkbox" onclick="updateConfigUrl()" style="float:left; margin:5 10 0 0" name="self-cite" id="self-cite" {% if yearSlider.selected.self_cite == 'true' %} checked="checked" {% endif %}/>
+    </div>
+    <div>
+      <b>Include coauthors</b>
+      <input class="coauthor" type="checkbox" onclick="updateConfigUrl()" style="float:left; margin:5 10 0 0" name="self-coauthor" id="coauthor" {% if yearSlider.selected.icoauthor == 'true' %} checked="checked" {% endif %}/>
+    </div>
+    <div style="padding-top:10px">
+      <b>(Beta) Compare with anchor flower</b>
+      <input class="reference" type="checkbox" onclick="updateConfigUrl()" style="float:left; margin:5 10 0 0" name="cmp-reference" id="reference" {% if yearSlider.selected.cmp_ref == 'true' %} checked="checked" {% endif %}/>
+    </div>
+    <div align=center style="padding-top:5px;">
+      <button class="btn " id="resubmitButton">Update Flower</button>
+    </div>
+  </div>
+  {% if curated or not curated %}
+  <div class="wrapper" style="border-top:1px #eee solid;">
+    <div style="padding-top:10px">
+      <b>Number of petals</b>
+      <input name="num-petals" id="num-petals" onchange="petalChange()" type="number" value="25" min="1" max="50"/>
+    </div>
+    <div style="padding-top:5px">
+      <b>Petal order</b>
+      <select id="petal-order" onchange="orderChange()">
+        <option value="ratio">Influence Ratio</option>
+        <option value="blue">Influenced By (Blue)</option>
+        <option value="red">Influencing (Red)</option>
+        <option value="total">Total Influence</option>
+      </select>
+    </div>
+    <div class="row" style="padding-top:10px">
+      <div class="col-sm-7" style="padding-right:0">
+        <input style="width:100%;height:26px;" type="text" value="{{ request.build_absolute_uri }}" id="configuration">
+      </div>
+      <div class="col-sm-5">
+        <button style="width:100%;height:26px;" onclick="copyConfig()">Copy Config</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script src="{% static 'js/d3.v4.min.js' %}"></script>
+<script src="{% static 'js/statchart.js' %}"></script>
+<script src="{% static 'js/flowerGraph.js' %}"></script>
+<script type="text/javascript">
+var selectedpublink = document.getElementById("selected_publication_link");
+var selectedcitelink = document.getElementById("selected_citation_link");
+selectedpublink.onclick = function(){showPapers("all-pub")};
+selectedcitelink.onclick = function(){showPapers("all-cite")};
+
+var yearcounter = {{ yearSlider.pubChart | safe }};
+var citationcounter = {{ yearSlider.citeChart | safe }};
+var processedcites = [];
+var pub_range = {{ yearSlider.pubrange | safe }};
+var cite_range = {{ yearSlider.citerange | safe }};
+var selected_config = {{ yearSlider.selected | safe }};
+var order_selector = document.getElementById("petal-order");
+order_selector.value = "{{ yearSlider.selected.order }}";
+
+var pubchart = new PubChart("#pub_chart");
+var citechart = new CiteChart("#cite_chart");
+var h = ($("#div_charts").height()-50)/2;
+var chartoption = {
+  min: Math.min(pub_range[0], cite_range[0]),
+  max: Math.max(pub_range[1], cite_range[1]),
+  xticks: Math.round(Math.max(pub_range[2], cite_range[2])/5), yticks: 3,
+  width:380, height:h,
+  top: 40, right: 25, bottom: 40, left: 50};
+
+var copyText = document.getElementById("configuration");
+var pubSlider = document.getElementById('publication-range');
+var citSlider = document.getElementById('citation-range');
+noUiSlider.create(pubSlider, {
+  connect: true,
+  behaviour: 'tap',
+  start: [ selected_config["pub_lower"], selected_config["pub_upper"] ],
+  step: 1,
+  animate: false,
+  range: {
+    'min': [ chartoption.min ],
+    'max': [ chartoption.max ]
+  }
+});
+noUiSlider.create(citSlider, {
+  connect: true,
+  behaviour: 'tap',
+  start: [ selected_config["cit_lower"], selected_config["cit_upper"] ],
+  step: 1,
+  animate: false,
+  range: {
+    'min': [ chartoption.min ],
+    'max': [ chartoption.max ]
+  }
+});
+
+var handles = [
+  pubSlider.getElementsByClassName('noUi-handle-lower')[0],
+  pubSlider.getElementsByClassName('noUi-handle-upper')[0],
+  citSlider.getElementsByClassName('noUi-handle-lower')[0],
+  citSlider.getElementsByClassName('noUi-handle-upper')[0]
+];
+var labels = [
+  document.getElementById('pub-lower-value'),
+  document.getElementById('pub-upper-value'),
+  document.getElementById('cit-lower-value'),
+  document.getElementById('cit-upper-value'),
+];
+
+pubSlider.noUiSlider.on('update', function ( values, handle, unencoded, isTap, positions ) {
+  handles[handle].innerText = parseInt(values[handle]);
+  labels[handle].innerText = parseInt(values[handle]);
+  updateNumbers();
+  updateCharts(citationcounter);
+});
+
+citSlider.noUiSlider.on('update', function ( values, handle, unencoded, isTap, positions ) {
+  handles[handle+2].innerText = parseInt(values[handle]);
+  labels[handle+2].innerText = parseInt(values[handle]);
+  updateNumbers();
+  citechart.updateRange(parseInt(values[0]), parseInt(values[1]));
+});
+
+
+function encode(num, alphabet) {
+    if (typeof alphabet === "undefined") {
+        BASE62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        alphabet = BASE62;
+    }
+
+    if (num == 0) {
+        return alphabet[0];
+    }
+    var arr = [];
+    var base = alphabet.length;
+    while (num != 0) {
+        var rem = num % base;
+        var num = Math.floor(num / base);
+
+        arr.push(alphabet[rem]);
+    }
+
+    arr.reverse();
+    return arr.join('');
+}
+
+function encode2(num) {
+    if (num) {
+        return '1';
+    }
+    else {
+        return '0';
+    }
+}
+
+function encodeOrder(ordering) {
+    var order = ["ratio", "blue", "red", "total"];
+
+    return order.indexOf(ordering);
+}
+function from_url_ext(url_ext_str) {
+    var url_arg_list = url_ext_str.split('&amp;');
+
+    var arg_vals = [];
+    for (var i = 0; i < url_arg_list.length; i ++) {
+        var val = url_arg_list[i].split('=')[1];
+
+        arg_vals.push(val);
+    }
+
+    return arg_vals
+}
+
+function hash_args(arg_tuple) {
+    var conv64list = [arg_tuple[0], arg_tuple[1], arg_tuple[2], arg_tuple[3]];
+    var conv2list = [arg_tuple[4], arg_tuple[5]];
+    var newlist = [];
+    for (var i = 0; i < conv64list.length; i ++) {
+        newlist.push(encode(conv64list[i]));
+    }
+    for (var i = 0; i < conv2list.length; i ++) {
+        if (conv2list[i] == 'true') { newlist.push('1');
+        }
+        else {
+            newlist.push('0');
+        }
+    }
+    newlist.push(encode(conv64list[6]));
+    return newlist;
+}
+
+function updateConfigUrl() {
+  if (copyText != null) {
+
+    copyText.value = "{{ url_base }}"
+      + "_" + encode(handles[0].innerText) + "_" + encode(handles[1].innerText)
+      + "_" + encode(handles[2].innerText) + "_" + encode(handles[3].innerText)
+      + "_" + encode2($("#self-cite").is(":checked"))
+      + "_" + encode2($("#coauthor").is(":checked"))
+      + "_" + encode($("#num-petals").val())
+      + "_" + encodeOrder($("#petal-order").val())
+      + "_" + encode2($("#reference").is(":checked"));
+  }
+}
+
+function updateNumbers() {
+  p_min = parseInt(handles[0].innerText)
+  p_max = parseInt(handles[1].innerText)
+  c_min = parseInt(handles[2].innerText)
+  c_max = parseInt(handles[3].innerText)
+  updatePubNumbers(yearcounter, p_min, p_max);
+  updateCiteNumbers(citationcounter, p_min, p_max, c_min, c_max);
+  updateConfigUrl();
+}
+
+function updatePubNumbers(data, min, max){
+  // calculate total paper number in selected year range
+  var selected_papers = 0
+  for (var i = 0; i < data.length; i++){
+    if (min <= data[i]["year"] && data[i]["year"] <= max) {
+      selected_papers += data[i]["value"]
+    }
+  }
+  document.getElementById("selected_num_papers").innerText = selected_papers;
+}
+
+function updateCiteNumbers(data, p_min, p_max, c_min, c_max){
+  // calculate total citation number in selected year range
+  var selected_papers = 0
+  for (var i = 0; i < data.length; i++){
+    if (p_min <= data[i]["year"] && data[i]["year"] <= p_max) {
+      for (var j = 0; j < data[i]["value"].length; j++){
+        if (c_min <= data[i]["value"][j]["year"] && data[i]["value"][j]["year"] <= c_max) {
+          selected_papers += data[i]["value"][j]["value"];
+        }
+      }
+    }
+  }
+  document.getElementById("selected_num_cites").innerText = selected_papers;
+}
+
+function updateCharts(data){
+  var pub_min = parseInt(handles[0].innerText)
+  var pub_max = parseInt(handles[1].innerText)
+  var cit_min = parseInt(handles[2].innerText)
+  var cit_max = parseInt(handles[3].innerText)
+
+  if (!pubchart.isInitialized()) {
+    pubchart.initChart(yearcounter, chartoption);
+  }
+  pubchart.updateRange(pub_min, pub_max);
+  var sum = {};
+  for (var i = 0; i < data.length; i++){
+    sum[data[i]["year"]] = 0;
+  }
+  for (var i = 0; i < data.length; i++){
+    if (pub_min <= data[i]["year"] && data[i]["year"] <= pub_max) {
+      for (var j = 0; j < data[i]["value"].length; j++){
+        sum[data[i]["value"][j]["year"]] += data[i]["value"][j]["value"];
+      }
+    }
+  }
+  var newdata = []
+  for (var k in sum) {
+    newdata.push({"year": +k, "value": sum[k]});
+  }
+  // console.log("newdata", newdata);
+  citechart.drawChart(newdata, chartoption);
+  citechart.updateRange(cit_min, cit_max);
+}
+
+function updateStats(stats){
+  Object.entries(stats).forEach(function([key, value]){
+    if (document.getElementById(key)){
+      document.getElementById(key).textContent = value
+    }
+  });
+}
+
+function copyConfig() {
+  copyText.select();
+  /* Copy the text inside the text field */
+  document.execCommand("copy");
+  alert("Copied current configuration");
+}
+
+resubmitButton.addEventListener('click', function(){
+  resubmitButton.className = "btn btn-primary flower-loading";
+  $.ajax({
+    type: "POST",
+    url: "/resubmit/",
+    data: {
+      from_pub_year: document.getElementById('pub-lower-value').textContent,
+      to_pub_year: document.getElementById('pub-upper-value').textContent,
+      from_cit_year: document.getElementById('cit-lower-value').textContent,
+      to_cit_year: document.getElementById('cit-upper-value').textContent,
+      option: option,
+      selfcite: selfCiteCheckbox.checked,
+      coauthor: coauthorCheckbox.checked,
+      cmp_ref: referenceCheckbox.checked,
+      keyword: keyword,
+      numpetals: document.getElementById('num-petals').value,
+      petalorder: document.getElementById('petal-order').value,
+      session: JSON.stringify(session)
+    },
+    success: function(result){
+      $("#graph1").empty();
+      $("#graph2").empty();
+      $("#graph3").empty();
+      $("#graph4").empty();
+
+      console.log(result);
+
+      author_data = result.author[0];
+      conf_data = result.conf[0];
+      inst_data = result.inst[0];
+      fos_data = result.fos[0];
+
+      cur_petals = parseInt($("#num-petals").val());
+      cur_order = $("#petal-order").val();
+
+      drawFlower("#graph1", author_data, 0, width, cur_petals, cur_order);
+      drawFlower("#graph2", conf_data, 1, width, cur_petals, cur_order);
+      drawFlower("#graph3", inst_data, 2, width, cur_petals, cur_order);
+      drawFlower("#graph4", fos_data, 3, width, cur_petals, cur_order);
+
+      // Reorder the layering
+      reorder_all_layering(cur_order);
+
+      // Disable bars
+      disableBloomNumBars(cur_petals, 2000);
+
+      session = result["session"];
+      // do not update stat for resubmit
+      // updateStats(result.stats);
+
+      resubmitButton.className = "btn btn-primary";
+    }
+  });
+});
+
+function showPapers(type, year=NaN) {
+    from_pub = document.getElementById('pub-lower-value').textContent;
+    to_pub = document.getElementById('pub-upper-value').textContent;
+    from_cite = document.getElementById('cit-lower-value').textContent;
+    to_cite = document.getElementById('cit-upper-value').textContent;
+
+  // event handler for pub/cite bar graphs
+  if (type == "bar-pub") {
+    $.ajax({
+      type: "POST",
+      url: "/get_publication_papers/",
+      data: {pub_year_min: year, pub_year_max: year},
+      success: function(result){
+        populatePapersContent(result.papers, year +" publications", result.names);
+        document.getElementById("node_info_modal").style.display = "block";
+      }
+    });
+
+  } else if (type == "bar-cite") {
+    $.ajax({
+      type: "POST",
+      url: "/get_citation_papers/",
+      data: {cite_year_min: year, cite_year_max: year, pub_year_min: from_pub, pub_year_max: to_pub},
+      success: function(result){
+        console.log(result);
+        populatePapersContent(result.papers, year+" citations [for publications between "+from_pub+"-"+to_pub+"]", result.names);
+        document.getElementById("node_info_modal").style.display = "block";
+      }
+    });
+
+  } else if (type == "all-pub"){
+    $.ajax({
+      type: "POST",
+      url: "/get_publication_papers/",
+      data: {pub_year_min: from_pub, pub_year_max: to_pub},
+      success: function(result){
+        populatePapersContent(result.papers, from_pub+"-"+to_pub+" publications", result.names);
+        document.getElementById("node_info_modal").style.display = "block";
+      }
+    });
+  } else if (type == "all-cite"){
+    $.ajax({
+      type: "POST",
+      url: "/get_citation_papers/",
+      data: {cite_year_min: from_cite, cite_year_max: to_cite, pub_year_min: from_pub, pub_year_max: to_pub},
+      success: function(result){
+        populatePapersContent(result.papers,  from_cite+"-"+to_cite+" citations [for publications between "+from_pub+"-"+to_pub+"]", result.names);
+        document.getElementById("node_info_modal").style.display = "block";
+      }
+    });
+  }
+}
+
+function populatePapersContent(papers, title, entity_names){
+  var container_div = document.getElementById("node_info_container");
+  var content_div = document.getElementById("node_info_content");
+  container_div.removeChild(content_div);
+
+  var title = "<h3>"+title+"</h3>";
+  var li_elements = "";
+  for (i in papers){
+    li_elements += "<li>"+formatCitation(papers[i], entity_names)+"</li>";
+  }
+  var ul_string = "<ul>"+li_elements+"</ul>";
+  var html_string = "<div id='node_info_content'>"+title+ul_string+"</div>";
+  var html_elem = new DOMParser().parseFromString(html_string, 'text/html').body.childNodes;
+  container_div.appendChild(html_elem[0]);
+}
+
+function orderChange() {
+  cur_num_petals = parseInt($("#num-petals").val());
+  reorder_all_flowers_grow(cur_num_petals, $("#petal-order").val(), 1500);
+  updateConfigUrl();
+}
+
+var prev_num_petals = parseInt($("#num-petals").val());
+
+function petalChange() {
+  new_num_petals = parseInt($("#num-petals").val());
+
+  // Animation ordering depending on growing or shrinking
+  if (new_num_petals < prev_num_petals) {
+    reorder_all_flowers_shrink(new_num_petals, $("#petal-order").val(), 1500);
+  }
+  else {
+    reorder_all_flowers_grow(new_num_petals, $("#petal-order").val(), 1500);
+  }
+
+  prev_num_petals = new_num_petals;
+  updateConfigUrl();
+}
+
+</script>
