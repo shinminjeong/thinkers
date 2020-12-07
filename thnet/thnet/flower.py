@@ -24,10 +24,9 @@ def make_flower(pageid):
     G = nx.read_gexf("data/philosophers.gexf")
     print("All nodes and edges:", len(G.nodes), len(G.edges))
     egonode = G.nodes()[pageid]
-    egograph = nx.ego_graph(G, pageid)
     egoname = normalized_name(egonode["name"])
 
-    paper_information = create_papers(pageid, egograph)
+    paper_information = create_papers(pageid, G)
     score_df = score_paper_info_list(paper_information, self=[egoname])
 
     flower_type = ('author', [Entity_type.AUTH])
@@ -53,30 +52,29 @@ def dummy_paperinfo(paperid, authorid, authorname):
         'FieldsOfStudy': [],
     }
 
-def create_papers(egoid, G):
+def create_papers(pageid, G):
     nodes = G.nodes()
     id_count = 0
     paper_information = []
-    for pageid in nodes:
-        if "name" not in nodes[pageid]: continue
-        references = []
-        citations = []
-        for u,v in G.out_edges(pageid):
-            id_count = id_count+1
-            if "name" not in nodes[v] or u != egoid: continue
-            references.append(dummy_paperinfo(id_count, nodes[v]["label"], normalized_name(nodes[v]["name"])))
-        for u,v in G.in_edges(pageid):
-            id_count = id_count+1
-            if "name" not in nodes[u] or v != egoid: continue
-            citations.append(dummy_paperinfo(id_count, nodes[u]["label"], normalized_name(nodes[u]["name"])))
+    references = []
+    citations = []
+    for u,v in G.out_edges(pageid):
+        if "name" not in nodes[v] or u != pageid: continue
+        references.append(dummy_paperinfo(int(G[u][v]["id"]), nodes[v]["label"], normalized_name(nodes[v]["name"])))
+    for u,v in G.in_edges(pageid):
         id_count = id_count+1
-        paper = dummy_paperinfo(id_count, pageid, normalized_name(nodes[pageid]["name"]))
-        paper["References"] = references
-        paper["Citations"] = citations
-        print(paper["Authors"])
-        print("reference:", [r["Authors"][0]["AuthorId"] for r in references])
-        print("citation:", [r["Authors"][0]["AuthorId"] for r in citations])
-        paper_information.append(paper)
+        if "name" not in nodes[u] or v != pageid: continue
+        citations.append(dummy_paperinfo(int(G[u][v]["id"]), nodes[u]["label"], normalized_name(nodes[u]["name"])))
+
+    paper = dummy_paperinfo(0, pageid, normalized_name(nodes[pageid]["name"]))
+    paper["References"] = references
+    paper["Citations"] = citations
+
+    print(paper["Authors"])
+    print("reference:", [r["Authors"][0]["AuthorId"] for r in references])
+    print("citation:", [r["Authors"][0]["AuthorId"] for r in citations])
+
+    paper_information.append(paper)
 
     # print(paper_information)
     return paper_information
