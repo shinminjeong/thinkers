@@ -7,7 +7,10 @@ import networkx as nx
 from .network import get_thnet, count_paperref
 
 def main(request):
-    node_info, edge_info, schools = get_thnet()
+    time = request.GET.get("time")
+    print("time", time)
+
+    node_info, edge_info, schools = get_thnet(time)
     return render(request, "main.html", {
         "node_info": node_info,
         "edge_info": edge_info,

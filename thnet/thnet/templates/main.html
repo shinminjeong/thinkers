@@ -26,6 +26,11 @@
 var node_info = {{ node_info| safe }};
 var edge_info = {{ edge_info| safe }};
 var schoolgroups = {{ schools| safe }};
+
+var viewgraph = {
+  nodes: node_info,
+  links: edge_info
+}
 var canvas = document.getElementById('thnet');
 var width = canvas.offsetWidth, height = canvas.offsetHeight;
 var thnet = new ThinkersNet("#thnet", width, height);

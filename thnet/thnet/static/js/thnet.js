@@ -1,6 +1,7 @@
 var color = d3.scaleOrdinal(d3.schemeSet3);
 var simulation, xScale, xAxisG, vis, allNodes, allLinks, allLabels;
 var hulls, allHulls;
+var ticksize = 100;
 var drag = simulation => {
 
   function dragstarted(d) {
@@ -57,7 +58,7 @@ function createXAxis(scale) {
   return d3.axisBottom(scale)
     .ticks(10)
     .tickFormat(function(d) {
-        var yearsAd = 100*Math.floor((d/(3600*24*365)+1970)/100);
+        var yearsAd = ticksize*Math.floor((d/(3600*24*365)+1970)/ticksize);
         if(yearsAd >= 0) {
             return yearsAd + "";
         } else {
@@ -157,6 +158,7 @@ function nodeRadius(score) {
 }
 
 function groupSimilarity(a, b) {
+  // console.log("groupSimilarity", a, b, node_info[a], node_info[b])
   var n1 = node_info[a].school.split(","),
       n2 = node_info[b].school.split(",");
   var set1 = n1[0]==""?new Set():new Set(n1),
@@ -220,10 +222,13 @@ class ThinkersNet {
     const xScale_margin = 80;
 
     const timestamps = viewgraph.nodes.map(d => d.born);
+    const timerange = d3.extent(timestamps)
+    var yearrange = (timerange[1]-timerange[0])/(3600*24*60);
+    if (yearrange < 2000) ticksize = 5;
 
     // add Y axis
     xScale = d3.scaleLinear()
-      .domain(d3.extent(timestamps)).nice()
+      .domain(timerange).nice()
       .range([xScale_margin, this.width - xScale_margin]);
     xAxisG = this.outer.append("g")
       .classed('x-axis', true)
@@ -244,7 +249,7 @@ class ThinkersNet {
       .force("link", d3.forceLink(links).id(d => d.id)
         .distance(function(l, i) {
           // return 200;
-          return 200/(1+10*groupSimilarity(l.source.id, l.target.id));
+          return 200/(1+10*groupSimilarity(l.source.index, l.target.index));
           // shorter edge length if source and target have a high group similarity
         })
         .strength(function(l, i) {
@@ -274,13 +279,13 @@ class ThinkersNet {
       .enter().append("circle")
       .attr("id", d => d.id)
       .attr("title", d => d.name)
-      .attr("data_pcount", d => node_info[d.id]["pcount"])
-      .attr("data_ccount", d => node_info[d.id]["ccount"])
-      .attr("data_authorid", d => node_info[d.id]["authorid"])
-      .attr("data_school", d => node_info[d.id]["school"])
+      .attr("data_pcount", d => d.pcount)
+      .attr("data_ccount", d => d.ccount)
+      .attr("data_authorid", d => d.authorid)
+      .attr("data_school", d => d.school)
       .attr("class", "node")
       .attr("savedFx", d => xScale(d.born))
-      .attr("r", d => nodeRadius(d.score))
+      .attr("r", d => nodeRadius(d.centrality))
       .on("click", function() {
         nodeSelected(this);
       })

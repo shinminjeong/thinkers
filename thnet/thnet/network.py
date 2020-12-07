@@ -176,7 +176,7 @@ def reference_btw_authors(a_from, a_to):
     json.dump(edge_data, open("data/edges_{}_{}.json".format(a_from, a_to), "w"))
 
 
-def school_analysis(data):
+def school_analysis(data, filtered_nodes):
     global school_name_map
     school_philosopher_map = {}
     for id, value in data.items():
@@ -184,7 +184,8 @@ def school_analysis(data):
         for s in schools:
             if s not in school_philosopher_map:
                 school_philosopher_map[s] = []
-            school_philosopher_map[s].append(id)
+            if id in filtered_nodes:
+                school_philosopher_map[s].append(id)
 
     school_counts = [(k, len(v)) for k, v in school_philosopher_map.items() if k != "" and k != "noinfo"]
     top_school_names = sorted(school_counts, key=itemgetter(1), reverse=True)[:20]
@@ -193,7 +194,7 @@ def school_analysis(data):
     return top_schools
 
 
-def ref_edge(G, aidmap):
+def ref_edge(G, aidmap, filtered_nodes):
     data = {}
     for i in range(0, 4500, 500):
         data.update(json.load(open("data/edges_{}_{}.json".format(i, i+500), "r")))
@@ -202,30 +203,45 @@ def ref_edge(G, aidmap):
     e1_sum = []
     e2_sum = []
     rev_count = []
-    edge_info = {}
+    edge_info = []
     for u, v in G.edges():
+        if u not in filtered_nodes or v not in filtered_nodes:
+            continue
+
         id = "{}_{}".format(aidmap[u] if u in aidmap else "", aidmap[v] if v in aidmap else "")
         id_rev = "{}_{}".format(aidmap[v] if v in aidmap else "", aidmap[u] if u in aidmap else "")
         e1 = data[id] if id in data else 0
         e2 = data[id_rev] if id_rev in data else 0
+        edge = {
+            "source": u,
+            "target": v,
+            "value": 1
+        }
         if e1 or e2:
             rev_count.append((e1, e2))
-            edge_info["{}_{}".format(u,v)] = e2+e1
-            print((e2, e1))
+            edge["citation"] = e2+e1
+            # print((e2, e1))
         e1_sum.append(e1)
         e2_sum.append(e2)
         G[u][v]["s->t"] = e2
         G[u][v]["t->s"] = e1
-    print(sum(e2_sum), sum(e1_sum))
+        edge_info.append(edge)
+    # print(sum(e2_sum), sum(e1_sum))
+    print("edges", len(G.edges()), len(edge_info))
     return edge_info
 
 
-def get_thnet():
+def born_year(time):
+    return int(time/(3600*24*365)+1970)
+
+
+def get_thnet(time):
     # search_philosopher_from_MAG()
     update_info_from_wiki()
     load_philosopher_net()
     G = nx.read_gexf("data/philosophers.gexf")
     ntime = nx.get_node_attributes(G, "born")
+    n_name = nx.get_node_attributes(G, "name")
     n_school = nx.get_node_attributes(G, "school")
     n_authorid = nx.get_node_attributes(G, "authorid")
     n_pcount = nx.get_node_attributes(G, "pcount")
@@ -235,19 +251,26 @@ def get_thnet():
     print("All nodes and edges:", len(G.nodes), len(G.edges), len(n_authorid))
     # save_papers_from_authorid(n_authorid.values())
     # reference_btw_authors(G)
-    edge_info = ref_edge(G, n_authorid)
 
-    schools = school_analysis(n_school)
-    filtered_nodes = [n for n in G.nodes() if n in ntime] # filter out node without born_time
+    if time == "modern":
+        filtered_nodes = [n for n in G.nodes() if n in ntime and born_year(ntime[n]) >= 1800]
+    else: # time not specified or "all"
+        filtered_nodes = [n for n in G.nodes() if n in ntime] # filter out node without born_time
+    schools = school_analysis(n_school, filtered_nodes)
 
-    node_info = {n:{
+    pagerank = nx.pagerank(G)
+    node_info = [{
         "id": n,
+        "name": n_name[n],
         "authorid": n_authorid[n] if n in n_authorid else 0,
+        "born": ntime[n],
         "pcount": n_pcount[n] if n in n_pcount else 0,
         "ccount": n_ccount[n] if n in n_ccount else 0,
-        "degree": G.degree[n],
+        "centrality": round(pagerank[n], 9),
         "school": n_school[n] if n in n_school else "",
-    } for n in filtered_nodes}
+    } for n in filtered_nodes]
+    edge_info = ref_edge(G, n_authorid, filtered_nodes)
+
     return node_info, edge_info, schools
 
 pa_data = None
