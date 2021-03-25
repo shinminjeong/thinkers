@@ -235,6 +235,37 @@ def born_year(time):
     return int(time/(3600*24*365)+1970)
 
 
+def get_egonet(pageid):
+    print("get_egonet", pageid)
+    G = nx.read_gexf("data/philosophers.gexf")
+    egoG = nx.ego_graph(G, pageid, undirected=True)
+
+    ntime = nx.get_node_attributes(G, "born")
+    n_name = nx.get_node_attributes(G, "name")
+    n_school = nx.get_node_attributes(G, "school")
+    n_authorid = nx.get_node_attributes(G, "authorid")
+    n_pcount = nx.get_node_attributes(G, "pcount")
+    n_ccount = nx.get_node_attributes(G, "ccount")
+    filtered_nodes = [n for n in egoG.nodes() if n in ntime]
+
+    pagerank = nx.pagerank(G)
+    node_info = [{
+        "id": n,
+        "name": n_name[n],
+        "authorid": n_authorid[n] if n in n_authorid else 0,
+        "born": ntime[n],
+        "pcount": n_pcount[n] if n in n_pcount else 0,
+        "ccount": n_ccount[n] if n in n_ccount else 0,
+        "centrality": round(pagerank[n], 9),
+        "school": n_school[n] if n in n_school else "",
+    } for n in filtered_nodes]
+    edge_info = ref_edge(egoG, n_authorid, filtered_nodes)
+
+    print("node_info", node_info)
+    print("edge_info", edge_info)
+
+    return node_info, edge_info
+
 def get_thnet(time):
     # search_philosopher_from_MAG()
     update_info_from_wiki()

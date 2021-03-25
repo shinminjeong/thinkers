@@ -355,6 +355,57 @@ table th {
 }
 
 
+.wnode {
+  stroke: #ddd;
+  stroke-width: 1;
+  fill: steelblue;
+}
+.wnode.egonode {
+  fill: red;
+}
+.wnode.old {
+  fill: #ccc;
+}
+.wnode.unselected {
+  fill: #eee;
+}
+.wnode.selected,
+.wnode.influenced-by {
+  fill: orange;
+}
+.wnode.influences {
+  fill: lime;
+}
+
+.wlink {
+  stroke: #bbb;
+  stroke-opacity: 1;
+  stroke-width: 0.5;
+  fill: none;
+}
+.wlink.unselected {
+  stroke: #eee;
+}
+.wlink.influenced-by {
+  stroke: orange;
+  stroke-opacity: 1;
+  stroke-width: 0.5;
+}
+.wlink.influences {
+  stroke: lime;
+  stroke-opacity: 1;
+  stroke-width: 0.5;
+}
+.wlabel {
+  font-weight: normal;
+  font-size: 85%;
+  display: none;
+}
+.wlabel.egonode {
+  font-weight: bold;
+}
+
+
 .link,
 .new-link {
   fill: none;
@@ -365,7 +416,7 @@ circle {
 }
 
 text {
-  font: 15px sans-serif;
+  font: 12px sans-serif;
   pointer-events: none;
   text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
 }

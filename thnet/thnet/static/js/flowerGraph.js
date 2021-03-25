@@ -1,17 +1,4 @@
-var colormaps = [
-  d3.interpolateRdBu,
-  d3.interpolatePiYG,
-  d3.interpolatePuOr,
-  d3.interpolatePRGn,
-  d3.interpolateBrBG,
-  d3.interpolateRdGy,
-  d3.interpolateRdYlBu,
-  d3.interpolateRdYlGn,
-  d3.interpolateSpectral,
-];
-
-// var colors = colormaps[parseInt(Math.random()*colormaps.length)];
-var colors = colormaps[0];
+var colors = d3.interpolateRdBu;
 var selcolor = [colors(0.2), colors(0.8)],
     norcolor = [colors(0.25), colors(0.75)],
     hidcolor = [colors(0.4), colors(0.6)];
@@ -42,7 +29,7 @@ function drawLegend() {
 }
 
 function drawFlower(svg_id, data, idx, w, num, order) {
-    var compare_ref = referenceCheckbox.checked;
+    var compare_ref = false;
 
     var total_entity_num = data["total"];
     var nodes = data["nodes"];
