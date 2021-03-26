@@ -1,4 +1,4 @@
-import os, json
+import os, json, csv
 import networkx as nx
 import matplotlib.pyplot as plt
 from itertools import product, permutations
@@ -8,30 +8,36 @@ from .search import *
 
 cur_path = os.path.dirname(os.path.abspath(__file__))
 def search_philosopher_from_MAG():
+    print("search_philosopher_from_MAG")
     data = json.load(open("data/philosophers.json", "r"))
     data = clean(data)
+    mag_cleaned = csv.reader(open("philosophers_MAG_cleaned.csv"))
+    next(mag_cleaned)
+    next(mag_cleaned)
+    mag_data = {r[0]: {
+        "name": r[1],
+        "year": r[2],
+        "author_id": r[3],
+        "author_name": r[4]
+    } for r in mag_cleaned}
+
     for i, p in enumerate(data):
+        print(i, p)
         pname = p["name"] if p["name"] else ""
-        authorinfo = es_search_author_name(pname) if pname else None
-        if authorinfo and authorinfo["PaperCount"] > 10:
+        pageid = p["pageid"]
+        pyear = mag_data[pageid]["year"]
+        authorid = mag_data[pageid]["author_id"]
+        if authorid and int(pyear) >= 1750:
+            authorinfo = es_search_author_id(authorid)
             p["MAG_id"] = authorinfo["AuthorId"]
             p["MAG_name"] = authorinfo["DisplayName"]
             p["MAG_pcount"] = authorinfo["PaperCount"]
             p["MAG_ccount"] = authorinfo["CitationCount"]
             print(i, "[{}]".format(pname), p["MAG_name"], p["MAG_id"], p["MAG_pcount"], p["MAG_ccount"])
         else:
-            print(i, "[{}]".format(pname), "Not Found")
+            print(i, "[{}]".format(pname), "Author_id Not Found")
+        print(p)
     json.dump(data, open("data/philosophers_MAG.json", "w"))
-
-def update_info_from_wiki():
-    data_mag = json.load(open("data/philosophers_MAG.json", "r"))
-    data_wiki = json.load(open("data/philosophers.json", "r"))
-    data_wiki = clean(data_wiki)
-    data_from = {v["pageid"]:v for v in data_wiki}
-    for p in data_mag:
-        p["school"] = data_from[p["pageid"]]["school"]
-    json.dump(data_mag, open("data/philosophers_MAG.json", "w"))
-
 
 def load_philosopher_net():
     print("load_philosopher_net -- start loading")
@@ -221,8 +227,7 @@ def get_egonet(pageid):
     return node_info, edge_info
 
 def get_thnet(time):
-    # search_philosopher_from_MAG()
-    update_info_from_wiki()
+    search_philosopher_from_MAG()
     load_philosopher_net()
     G = nx.read_gexf("data/philosophers.gexf")
     ntime = nx.get_node_attributes(G, "born")

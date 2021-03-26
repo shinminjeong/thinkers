@@ -2,7 +2,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, Q
 from operator import itemgetter
 
-ES_SERVER = "130.56.248.78:9200"
+ES_SERVER = "localhost:9200"
 client = Elasticsearch(ES_SERVER, timeout=600)
 
 def es_search_paper_reference(reflist):
@@ -24,6 +24,19 @@ def es_search_papers_from_aid(authorid):
     else:
         print("[es_search_papers_from_authorid] no result", authorid)
     return data
+
+
+def es_search_author_id(authorid):
+    s = Search(using=client, index="authors")
+    s = s.query("match", AuthorId=authorid)
+    response = s.execute()
+    result = response.to_dict()["hits"]["hits"]
+    cols = ["AuthorId", "DisplayName", "NormalizedName", "PaperCount", "CitationCount"]
+    if result:
+        return r["_source"]
+    else:
+        print("[es_search_author_id] no result", authorid)
+        return None
 
 def es_search_author_name(author_name):
     q = {
