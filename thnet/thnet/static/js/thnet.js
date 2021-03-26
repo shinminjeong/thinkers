@@ -67,9 +67,7 @@ function createXAxis(scale) {
     });
 }
 
-var selectedNode = null;
 function nodeSelected(node) {
-  if (selectedNode === node) return;
   console.log("nodeSelected", node.id, node.getAttribute("title"), node)
   allNodes.classed("selected", function(n){ return n.id == node.id});
   allLinks.classed("influenced-by", function(l){ return l.target.id == node.id})
@@ -77,13 +75,12 @@ function nodeSelected(node) {
   allLabels.classed("show", function(n){ return n.id == node.id})
   d3.selectAll(".link.influenced-by").each(function(d, l) {
     d3.select(allNodes._groups[0][d.source.index]).classed("influenced-by", true);
-    // d3.select(allLabels._groups[0][d.source.index]).classed("show", true);
+    d3.select(allLabels._groups[0][d.source.index]).classed("show", true);
   });
   d3.selectAll(".link.influences").each(function(d, l) {
     d3.select(allNodes._groups[0][d.target.index]).classed("influences", true);
-    // d3.select(allLabels._groups[0][d.target.index]).classed("show", true);
+    d3.select(allLabels._groups[0][d.target.index]).classed("show", true);
   });
-  selectedNode = node;
 }
 
 function resetSelectedNode() {
@@ -100,7 +97,6 @@ function showLabel(node) {
 }
 
 function hideLabel(node) {
-  if (selectedNode === node) return;
   d3.select('text[id="'+node.id+'"]').classed("show", false);
 }
 
@@ -265,14 +261,7 @@ class ThinkersNet {
       .data(links)
       .enter().append("line")
       .attr("id", d => d.source.index + "_" + d.target.index)
-      .attr("class", "link")
-      // .attr("stroke", function(d) {
-      //   var id = d.source.id + "_" + d.target.id;
-      //   console.log(edge_info[id])
-      //   if (edge_info[id])
-      //     return "black";
-      //   else return "transparent";
-      // });
+      .attr("class", "link");
 
     allNodes = this.nodeg.selectAll(".node")
       .data(nodes)
@@ -290,10 +279,10 @@ class ThinkersNet {
         nodeSelected(this);
       })
       .on("mouseover", function() {
-        showLabel(this);
+        nodeSelected(this);
       })
       .on("mouseout", function() {
-        hideLabel(this);
+        resetSelectedNode();
       })
       .call(drag(simulation));
 
