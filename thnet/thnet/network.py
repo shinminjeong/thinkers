@@ -22,21 +22,21 @@ def search_philosopher_from_MAG():
     } for r in mag_cleaned}
 
     for i, p in enumerate(data):
-        print(i, p)
         pname = p["name"] if p["name"] else ""
         pageid = p["pageid"]
         pyear = mag_data[pageid]["year"]
         authorid = mag_data[pageid]["author_id"]
         if authorid != "no info" and int(pyear) >= 1750:
             authorinfo = es_search_author_id(authorid)
+            if authorinfo == None:
+                print(i, "[{}] -- {}".format(pname, authorid), "Not in current DB")
             p["MAG_id"] = authorinfo["AuthorId"]
             p["MAG_name"] = authorinfo["DisplayName"]
             p["MAG_pcount"] = authorinfo["PaperCount"]
             p["MAG_ccount"] = authorinfo["CitationCount"]
             print(i, "[{}]".format(pname), p["MAG_name"], p["MAG_id"], p["MAG_pcount"], p["MAG_ccount"])
         else:
-            print(i, "[{}]".format(pname), "Author_id Not Found")
-        print(p)
+            print(i, "[{}] -- {}, {}".format(pname, authorid, pyear), "Not Found")
     json.dump(data, open("data/philosophers_MAG.json", "w"))
 
 def load_philosopher_net():
