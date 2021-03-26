@@ -151,31 +151,6 @@ def save_papers_from_authorid(authorlist):
     json.dump(data, open("data/authorpapers.json", "w"))
 
 
-def reference_btw_authors(a_from, a_to):
-    load_philosopher_net();
-    G = nx.read_gexf("data/philosophers.gexf")
-
-    edges = G.edges()
-    nodes = G.nodes()
-    edge_data = {}
-    for i, e in enumerate(edges):
-        if i < a_from or i >= a_to: continue
-        a1 = nodes[e[0]]
-        a2 = nodes[e[1]]
-        if "authorid" in a1 and "authorid" in a2:
-            refcount1 =  count_paperref(a1["authorid"], a2["authorid"])
-            print("{}/{}".format(i, len(edges)), a1["name"], "-->", a2["name"], refcount1)
-            if refcount1 > 0:
-                edge_data["{}_{}".format(a1["authorid"], a2["authorid"])] = refcount1
-
-            refcount2 = count_paperref(a2["authorid"], a1["authorid"])
-            print("{}/{}".format(i, len(edges)), a2["name"], "-->", a1["name"], refcount2)
-            if refcount2 > 0:
-                edge_data["{}_{}".format(a2["authorid"], a1["authorid"])] = refcount2
-
-    json.dump(edge_data, open("data/edges_{}_{}.json".format(a_from, a_to), "w"))
-
-
 def school_analysis(data, filtered_nodes):
     global school_name_map
     school_philosopher_map = {}
@@ -195,36 +170,15 @@ def school_analysis(data, filtered_nodes):
 
 
 def ref_edge(G, aidmap, filtered_nodes):
-    data = {}
-    for i in range(0, 4500, 500):
-        data.update(json.load(open("data/edges_{}_{}.json".format(i, i+500), "r")))
-    print("{} out of {} edges have citation records".format(len(data), len(G.edges())))
-
-    e1_sum = []
-    e2_sum = []
-    rev_count = []
     edge_info = []
     for u, v in G.edges():
         if u not in filtered_nodes or v not in filtered_nodes:
             continue
-
-        id = "{}_{}".format(aidmap[u] if u in aidmap else "", aidmap[v] if v in aidmap else "")
-        id_rev = "{}_{}".format(aidmap[v] if v in aidmap else "", aidmap[u] if u in aidmap else "")
-        e1 = data[id] if id in data else 0
-        e2 = data[id_rev] if id_rev in data else 0
         edge = {
             "source": u,
             "target": v,
             "value": 1
         }
-        if e1 or e2:
-            rev_count.append((e1, e2))
-            edge["citation"] = e2+e1
-            # print((e2, e1))
-        e1_sum.append(e1)
-        e2_sum.append(e2)
-        G[u][v]["s->t"] = e2
-        G[u][v]["t->s"] = e1
         edge_info.append(edge)
     # print(sum(e2_sum), sum(e1_sum))
     print("edges", len(G.edges()), len(edge_info))
@@ -280,8 +234,6 @@ def get_thnet(time):
     # histogram({k:ntime[k] for k,a in n_authorid.items()})
 
     print("All nodes and edges:", len(G.nodes), len(G.edges), len(n_authorid))
-    # save_papers_from_authorid(n_authorid.values())
-    # reference_btw_authors(G)
 
     if time == "modern":
         filtered_nodes = [n for n in G.nodes() if n in ntime and born_year(ntime[n]) >= 1800]
