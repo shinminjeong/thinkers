@@ -30,6 +30,7 @@ def search_philosopher_from_MAG():
             authorinfo = es_search_author_id(authorid)
             if authorinfo == None:
                 print(i, "[{}] -- {}".format(pname, authorid), "Not in current DB")
+                continue
             p["MAG_id"] = authorinfo["AuthorId"]
             p["MAG_name"] = authorinfo["DisplayName"]
             p["MAG_pcount"] = authorinfo["PaperCount"]
