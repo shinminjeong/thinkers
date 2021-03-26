@@ -33,7 +33,7 @@ def es_search_author_id(authorid):
     result = response.to_dict()["hits"]["hits"]
     cols = ["AuthorId", "DisplayName", "NormalizedName", "PaperCount", "CitationCount"]
     if result:
-        return r["_source"]
+        return result[0]["_source"]
     else:
         print("[es_search_author_id] no result", authorid)
         return None

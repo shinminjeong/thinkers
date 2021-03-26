@@ -27,7 +27,7 @@ def search_philosopher_from_MAG():
         pageid = p["pageid"]
         pyear = mag_data[pageid]["year"]
         authorid = mag_data[pageid]["author_id"]
-        if authorid and int(pyear) >= 1750:
+        if authorid != "no info" and int(pyear) >= 1750:
             authorinfo = es_search_author_id(authorid)
             p["MAG_id"] = authorinfo["AuthorId"]
             p["MAG_name"] = authorinfo["DisplayName"]
