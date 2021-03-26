@@ -24,20 +24,23 @@ def search_philosopher_from_MAG():
     for i, p in enumerate(data):
         pname = p["name"] if p["name"] else ""
         pageid = p["pageid"]
-        pyear = mag_data[pageid]["year"]
-        authorid = mag_data[pageid]["author_id"]
-        if authorid != "no info" and int(pyear) >= 1750:
-            authorinfo = es_search_author_id(authorid)
-            if authorinfo == None:
-                print(i, "[{}] -- {}".format(pname, authorid), "Not in current DB")
-                continue
-            p["MAG_id"] = authorinfo["AuthorId"]
-            p["MAG_name"] = authorinfo["DisplayName"]
-            p["MAG_pcount"] = authorinfo["PaperCount"]
-            p["MAG_ccount"] = authorinfo["CitationCount"]
-            print(i, "[{}]".format(pname), p["MAG_name"], p["MAG_id"], p["MAG_pcount"], p["MAG_ccount"])
+        if pageid in mag_data:
+            pyear = mag_data[pageid]["year"]
+            authorid = mag_data[pageid]["author_id"]
+            if authorid != "no info" and int(pyear) >= 1750:
+                authorinfo = es_search_author_id(authorid)
+                if authorinfo == None:
+                    print(i, "[{}] -- {}".format(pname, authorid), "Not in current DB")
+                    continue
+                p["MAG_id"] = authorinfo["AuthorId"]
+                p["MAG_name"] = authorinfo["DisplayName"]
+                p["MAG_pcount"] = authorinfo["PaperCount"]
+                p["MAG_ccount"] = authorinfo["CitationCount"]
+                print(i, "[{}]".format(pname), p["MAG_name"], p["MAG_id"], p["MAG_pcount"], p["MAG_ccount"])
+            else:
+                print(i, "[{}] -- {}, {}".format(pname, authorid, pyear), "Not Found")
         else:
-            print(i, "[{}] -- {}, {}".format(pname, authorid, pyear), "Not Found")
+            print(i, "[{}]".format(pname), "Not in MAG")
     json.dump(data, open("data/philosophers_MAG.json", "w"))
 
 def load_philosopher_net():
