@@ -39,3 +39,16 @@ def flower(request):
     }
 
     return render(request, "flower.html", data)
+
+def arc(request):
+    pageid = request.GET.get('id')
+    flower_info = make_flower(pageid)
+
+    node_info, edge_info = get_egonet(pageid)
+    data = {
+        "ego_node": pageid,
+        "node_info": node_info,
+        "edge_info": edge_info,
+    }
+
+    return render(request, "arc.html", data)

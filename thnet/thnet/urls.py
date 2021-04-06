@@ -20,6 +20,7 @@ from . import views
 urlpatterns = [
     path('', views.main),
     path('flower', views.flower),
+    path('arc', views.arc),
     path('get_author_info', views.get_author_info, name='get_author_info'),
     path('admin/', admin.site.urls),
 ]

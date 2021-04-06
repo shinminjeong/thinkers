@@ -231,7 +231,7 @@ def get_egonet(pageid):
     return node_info, edge_info
 
 def get_thnet(time):
-    search_philosopher_from_MAG()
+    # search_philosopher_from_MAG()
     load_philosopher_net()
     G = nx.read_gexf("data/philosophers.gexf")
     ntime = nx.get_node_attributes(G, "born")

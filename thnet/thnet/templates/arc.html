@@ -1,0 +1,38 @@
+{% load static %}
+
+<html>
+{% include 'header.html' %}
+<body class="hold-transition skin-custom sidebar-mini">
+<div class="wrapper">
+  <header class="main-header header-flower">
+    {% include 'pagehead.html' %}
+  </header>
+  <div class="row">
+    <div class="col-md-12" id="egonet-container" style="height:860px;">
+      <svg id="arc" width=100% height=100%></svg>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+<script src="{% static 'js/d3.v4.min.js' %}"></script>
+<script src="{% static 'js/d3-selection-multi.v1.min.js' %}"></script>
+<script src="{% static 'js/d3-scale-chromatic.v1.min.js' %}"></script>
+<script src="{% static 'js/arc.js' %}"></script>
+<script>
+var width = document.getElementById('egonet-container').offsetWidth;
+
+var node_info = {{ node_info| safe }};
+var edge_info = {{ edge_info| safe }};
+var ego_node = '{{ ego_node }}';
+
+var viewgraph = {
+  nodes: node_info,
+  links: edge_info
+}
+
+var thnet = new ThinkersEgoNet("#arc", width-100, 800);
+thnet.initGraph();
+thnet.drawGraph(ego_node);
+
+</script>
