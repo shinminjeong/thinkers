@@ -1,31 +1,13 @@
 var color = d3.scaleOrdinal(d3.schemeSet3);
 var simulation, xScale, xAxisG, vis, allNodes, allLinks, allLabels;
-var ticksize = 100, yPos = 400;
-
-var clippingToArc = true;
-function clipNodesToTimeline(shouldClip) {
-  if(shouldClip) {
-    clippingToTimeline = true;
-    yAxisG.attr("display", "block");
-    simulation.stop();
-    allNodes.each(function(d) {
-      d.fx = d.savedFx;
-    })
-    simulation.alpha(1).restart();
-  } else {
-    clippingToTimeline = false;
-    yAxisG.attr("display", "none");
-    simulation.stop();
-    allNodes.each(function(d) {
-      d.fx = null;
-    })
-    simulation.alpha(1).restart();
-  }
-}
-
+var ticksize = 10, yPos = 400;
 
 function getYear(time) {
   return time/(3600*24*365)+1970;
+}
+
+function getTime(year) {
+  return (year-1970)*(3600*24*365);
 }
 
 function createXAxis(scale) {
@@ -115,7 +97,11 @@ class ThinkersEgoNet {
       .attr("width", this.width)
       .attr("height", this.height)
       .attr("pointer-events", "all")
-      .call(d3.zoom().on("zoom", this.redraw));
+      .call(d3.zoom().scaleExtent([1, 10]).on("zoom", this.redraw));
+    this.rect = this.outer.append("rect")
+      .attr("fill", "white")
+      .attr("width", "100%")
+      .attr("height", "100%");
     vis = this.outer.append("g");
     this.defs = this.outer.append("defs")
   }
@@ -142,9 +128,7 @@ class ThinkersEgoNet {
     const xScale_margin = 80;
 
     const timestamps = viewgraph.nodes.map(d => d.born);
-    const timerange = d3.extent(timestamps)
-    var yearrange = (timerange[1]-timerange[0])/(3600*24*60);
-    if (yearrange < 2000) ticksize = 5;
+    const timerange = d3.extent(timestamps);
 
     // add X axis
     xScale = d3.scaleLog()
@@ -161,7 +145,6 @@ class ThinkersEgoNet {
       viewgraph.nodes[i].fx = xScale(viewgraph.nodes[i].born);
       viewgraph.nodes[i].fy = yPos;
     }
-
     const links = viewgraph.links.map(d => Object.create(d));
     const nodes = viewgraph.nodes.map(d => Object.create(d));
 
@@ -238,6 +221,10 @@ class ThinkersEgoNet {
       allLinks
           .attr("d", d=> wikiLinkArc(d))
     });
+
+    this.rect.on("click", function() {
+      resetSelectedNode();
+    })
 
   }
 
