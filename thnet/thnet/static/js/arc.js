@@ -80,7 +80,9 @@ function wikiLinkArc(d) {
       tx = d.target.x, ty = d.target.y;
   var dx = tx-sx, dy = ty-sy,
       dr = dx/2;
-  return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
+  if (dx > 0) // to draw upper arc for wiki edges
+    return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,1 " + tx + "," + ty;
+  else return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
 }
 
 class ThinkersEgoNet {
@@ -145,7 +147,11 @@ class ThinkersEgoNet {
       viewgraph.nodes[i].fx = xScale(viewgraph.nodes[i].born);
       viewgraph.nodes[i].fy = yPos;
     }
-    const links = viewgraph.links.map(d => Object.create(d));
+    const links = [];
+    viewgraph.links.forEach(function(d) {
+      if (d.source === ego_node || d.target === ego_node) // filter only direct edges
+        links.push(Object.create(d));
+    });
     const nodes = viewgraph.nodes.map(d => Object.create(d));
 
     this.defs.selectAll("marker")
