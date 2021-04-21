@@ -22,13 +22,17 @@
 <script>
 var width = document.getElementById('egonet-container').offsetWidth;
 
-var node_info = {{ node_info| safe }};
-var edge_info = {{ edge_info| safe }};
+var node_info_w = {{ node_info_w| safe }};
+var edge_info_w = {{ edge_info_w| safe }};
+var node_info_f = {{ node_info_f| safe }};
+var edge_info_f = {{ edge_info_f| safe }};
 var ego_node = '{{ ego_node }}';
 
 var viewgraph = {
-  nodes: node_info,
-  links: edge_info
+  nodes_w: node_info_w,
+  links_w: edge_info_w,
+  nodes_f: node_info_f,
+  links_f: edge_info_f,
 }
 
 var thnet = new ThinkersEgoNet("#arc", width-100, 800);

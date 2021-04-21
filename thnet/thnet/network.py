@@ -198,8 +198,12 @@ def ref_edge(G, aidmap, filtered_nodes):
 def born_year(time):
     return int(time/(3600*24*365)+1970)
 
+def born_time(year):
+    return (int(year)-1970)*(3600*24*365)
 
-def get_egonet(pageid):
+
+
+def get_th_egonet(pageid):
     print("get_egonet", pageid)
     G = nx.read_gexf("data/philosophers.gexf")
     egoG = nx.ego_graph(G, pageid, undirected=True)
@@ -220,7 +224,7 @@ def get_egonet(pageid):
         "born": ntime[n],
         "pcount": n_pcount[n] if n in n_pcount else 0,
         "ccount": n_ccount[n] if n in n_ccount else 0,
-        "centrality": round(pagerank[n], 9),
+        "r": round(pagerank[n], 9),
         "school": n_school[n] if n in n_school else "",
     } for n in filtered_nodes]
     edge_info = ref_edge(egoG, n_authorid, filtered_nodes)
@@ -229,6 +233,104 @@ def get_egonet(pageid):
     print("edge_info", edge_info)
 
     return node_info, edge_info
+
+def get_arcnet(pageid):
+    print("get_egonet", pageid)
+    G = nx.read_gexf("data/philosophers.gexf")
+    egoG = nx.ego_graph(G, pageid, undirected=True)
+
+    ntime = nx.get_node_attributes(G, "born")
+    n_name = nx.get_node_attributes(G, "name")
+    n_school = nx.get_node_attributes(G, "school")
+    n_authorid = nx.get_node_attributes(G, "authorid")
+    n_pcount = nx.get_node_attributes(G, "pcount")
+    n_ccount = nx.get_node_attributes(G, "ccount")
+    filtered_nodes = [n for n in egoG.nodes() if n in ntime]
+
+    pagerank = nx.pagerank(G)
+    node_info_w = [{
+        "id": n,
+        "name": n_name[n],
+        "authorid": n_authorid[n] if n in n_authorid else 0,
+        "born": ntime[n],
+        "r": round(pagerank[n], 9),
+    } for n in filtered_nodes]
+    edge_info_w = ref_edge(egoG, n_authorid, filtered_nodes)
+
+    # timeline of the ego
+    ego_timeline = [{"type":"born", "year":ntime[pageid], "count":1}]
+
+    ego_authorid = n_authorid[pageid]
+    flower_data = json.load(open("data/flowers/{}.json".format(ego_authorid), "r"))
+    # print(flower_data)
+
+    node_info_f = {}
+    edge_info_f = []
+    pub_timeline = []
+    for i, f in enumerate(flower_data):
+        for y in f["year"]:
+            pubyear = y["publication_year"]
+            infyear = y["influence_year"]
+            name = f["entity_name"]
+            idx = i+1
+            if y["influencing"] > 0:
+                node_id = "{}_{}_{}".format(name, pubyear, idx)
+                if node_id in node_info_f:
+                    node_info_f[node_id]["r"] += y["influencing"]/1000
+                else:
+                    node_info_f[node_id] = {
+                        "id": "{}_{}_{}".format(name, pubyear, idx),
+                        "node": "alt",
+                        "index": idx,
+                        "name": name,
+                        "born": born_time(pubyear),
+                        "r": y["influencing"]/1000
+                    }
+                pub_timeline.append(infyear)
+                print(infyear, "<--", pubyear, name, y)
+                edge_info_f.append({
+                    "source": "{}_{}_{}".format(name, pubyear, idx),
+                    "target": "ego_{}".format(infyear),
+                    "direction": "influencing",
+                    "value": y["influencing"]
+                })
+            if y["influenced"] > 0:
+                node_id = "{}_{}_{}".format(name, infyear, idx)
+                if node_id in node_info_f:
+                    node_info_f[node_id]["r"] += y["influenced"]/1000
+                else:
+                    node_info_f[node_id] = {
+                        "id": "{}_{}_{}".format(name, infyear, idx),
+                        "node": "alt",
+                        "index": idx,
+                        "name": name,
+                        "born": born_time(infyear),
+                        "r": y["influenced"]/1000
+                    }
+                pub_timeline.append(pubyear)
+                print(infyear, "-->", pubyear, name, y)
+                edge_info_f.append({
+                    "source": "{}_{}_{}".format(name, infyear, idx),
+                    "target": "ego_{}".format(pubyear),
+                    "direction": "influenced",
+                    "value": y["influenced"]
+                })
+
+    pub_cnt = Counter(pub_timeline)
+    for pubyear in pub_timeline:
+        node_info_f["ego_{}".format(pubyear)] = {
+            "id": "ego_{}".format(pubyear, idx),
+            "node": "ego",
+            "index": 0,
+            "born": born_time(pubyear),
+            "r": pub_cnt[pubyear]/1000
+        }
+    # print("node_info_w", node_info_w)
+    # print("edge_info_w", edge_info_w)
+    # print("node_info_f", node_info_f.values())
+    # print("edge_info_f", edge_info_f)
+
+    return node_info_w, edge_info_w, list(node_info_f.values()), edge_info_f
 
 def get_thnet(time):
     # search_philosopher_from_MAG()

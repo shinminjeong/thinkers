@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 import networkx as nx
-from .network import get_thnet, get_egonet
+from .network import get_thnet, get_th_egonet, get_arcnet
 from .flower import make_flower
 
 def main(request):
@@ -30,7 +30,7 @@ def flower(request):
     pageid = request.GET.get('id')
     flower_info = make_flower(pageid)
 
-    node_info, edge_info = get_egonet(pageid)
+    node_info, edge_info = get_th_egonet(pageid)
     data = {
         "ego_node": pageid,
         "node_info": node_info,
@@ -42,13 +42,14 @@ def flower(request):
 
 def arc(request):
     pageid = request.GET.get('id')
-    flower_info = make_flower(pageid)
 
-    node_info, edge_info = get_egonet(pageid)
+    node_w, edge_w, node_f, edge_f = get_arcnet(pageid)
     data = {
         "ego_node": pageid,
-        "node_info": node_info,
-        "edge_info": edge_info,
+        "node_info_w": node_w,
+        "edge_info_w": edge_w,
+        "node_info_f": node_f,
+        "edge_info_f": edge_f,
     }
 
     return render(request, "arc.html", data)
