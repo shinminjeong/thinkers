@@ -97,7 +97,7 @@ function resetSelectedNode() {
   allLinks.classed("influenced-by", false);
   allLinks.classed("unselected", false);
   allLabels.classed("show", function(d) {
-    if (d.id === ego_node || nodeRadiusWiki(d.centrality) > 5) return true;
+    if (d.id === ego_node || nodeRadiusWiki(d.r) > 5) return true;
     else return false;
   })
 }
@@ -237,7 +237,7 @@ class ThinkersEgoNet {
       })
       .attr("savedFx", this.width/2)
       .attr("savedFy", d => yScale(d.born))
-      .attr("r", d => nodeRadiusWiki(d.centrality))
+      .attr("r", d => nodeRadiusWiki(d.r))
       .on("click", function() {
         nodeSelected(this);
       })
@@ -257,7 +257,7 @@ class ThinkersEgoNet {
       .attr("id", d => d.id)
       .attr("class", function(d) {
         if (d.id === ego_node) return "wlabel egonode show";
-        else if (nodeRadiusWiki(d.centrality) > 5) return "wlabel show";
+        else if (nodeRadiusWiki(d.r) > 5) return "wlabel show";
         else return "wlabel";
       })
       .text(d => d.name);

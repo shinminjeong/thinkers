@@ -43,9 +43,9 @@ def flower(request):
 def arc(request):
     pageid = request.GET.get('id')
 
-    node_w, edge_w, node_f, edge_f = get_arcnet(pageid)
+    egonode, node_w, edge_w, node_f, edge_f = get_arcnet(pageid)
     data = {
-        "ego_node": pageid,
+        "ego_node": egonode,
         "node_info_w": node_w,
         "edge_info_w": edge_w,
         "node_info_f": node_f,

@@ -257,13 +257,11 @@ def get_arcnet(pageid):
     } for n in filtered_nodes]
     edge_info_w = ref_edge(egoG, n_authorid, filtered_nodes)
 
-    # timeline of the ego
-    ego_timeline = [{"type":"born", "year":ntime[pageid], "count":1}]
-
     ego_authorid = n_authorid[pageid]
     flower_data = json.load(open("data/flowers/{}.json".format(ego_authorid), "r"))
     # print(flower_data)
 
+    radius_scale = 1500
     node_info_f = {}
     edge_info_f = []
     pub_timeline = []
@@ -276,7 +274,7 @@ def get_arcnet(pageid):
             if y["influencing"] > 0:
                 node_id = "{}_{}_{}".format(name, pubyear, idx)
                 if node_id in node_info_f:
-                    node_info_f[node_id]["r"] += y["influencing"]/1000
+                    node_info_f[node_id]["r"] += y["influencing"]/radius_scale
                 else:
                     node_info_f[node_id] = {
                         "id": "{}_{}_{}".format(name, pubyear, idx),
@@ -284,7 +282,7 @@ def get_arcnet(pageid):
                         "index": idx,
                         "name": name,
                         "born": born_time(pubyear),
-                        "r": y["influencing"]/1000
+                        "r": y["influencing"]/radius_scale
                     }
                 pub_timeline.append(infyear)
                 print(infyear, "<--", pubyear, name, y)
@@ -297,7 +295,7 @@ def get_arcnet(pageid):
             if y["influenced"] > 0:
                 node_id = "{}_{}_{}".format(name, infyear, idx)
                 if node_id in node_info_f:
-                    node_info_f[node_id]["r"] += y["influenced"]/1000
+                    node_info_f[node_id]["r"] += y["influenced"]/radius_scale
                 else:
                     node_info_f[node_id] = {
                         "id": "{}_{}_{}".format(name, infyear, idx),
@@ -305,7 +303,7 @@ def get_arcnet(pageid):
                         "index": idx,
                         "name": name,
                         "born": born_time(infyear),
-                        "r": y["influenced"]/1000
+                        "r": y["influenced"]/radius_scale
                     }
                 pub_timeline.append(pubyear)
                 print(infyear, "-->", pubyear, name, y)
@@ -323,14 +321,16 @@ def get_arcnet(pageid):
             "node": "ego",
             "index": 0,
             "born": born_time(pubyear),
-            "r": pub_cnt[pubyear]/1000
+            "r": pub_cnt[pubyear]/radius_scale
         }
     # print("node_info_w", node_info_w)
     # print("edge_info_w", edge_info_w)
     # print("node_info_f", node_info_f.values())
     # print("edge_info_f", edge_info_f)
 
-    return node_info_w, edge_info_w, list(node_info_f.values()), edge_info_f
+    egonode = {"pageid": pageid, "authorid": ego_authorid, "born": ntime[pageid]}
+
+    return egonode, node_info_w, edge_info_w, list(node_info_f.values()), edge_info_f
 
 def get_thnet(time):
     # search_philosopher_from_MAG()

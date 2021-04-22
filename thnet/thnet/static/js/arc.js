@@ -65,7 +65,7 @@ function resetSelectedNode() {
   allLinks.classed("influenced-by", false);
   allLinks.classed("unselected", false);
   allLabels.classed("show", function(d) {
-    if (d.id === ego_node || nodeRadiusWiki(d.centrality) > 100) return true;
+    if (d.id === ego_node.pageid || nodeRadiusWiki(d.centrality) > 100) return true;
     else return false;
   })
 }
@@ -88,15 +88,20 @@ function wikiLinkArc(d) {
   var dx = tx-sx, dy = ty-sy,
       dr = dx/2;
 
-  if (d.type === "w") { // wiki edges
-    if (dx > 0) // to draw upper arc for wiki edges
-      return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,1 " + tx + "," + ty;
-    else return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
-  } else { // mag edges
-    if (d.direction == "influencing")
-      return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
-    else return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,1 " + tx + "," + ty;
-  }
+  if (dx > 0) // to draw upper arc for wiki edges
+    return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,1 " + tx + "," + ty;
+  else return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
+}
+
+function magLinkArc(d) {
+  var sx = d.source.x, sy = d.source.y,
+      tx = d.target.x, ty = d.target.y;
+  var dx = tx-sx, dy = ty-sy,
+      dr = Math.sqrt(dx * dx + dy * dy);
+
+  if (d.direction == "influencing")
+    return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
+  else return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,1 " + tx + "," + ty;
 }
 
 class ThinkersEgoNet {
@@ -166,14 +171,6 @@ class ThinkersEgoNet {
       .attr("display", "block")
       .attr("transform", "translate(" + 0 + "," + (yPos+egoH) + ")");
 
-    // // draw egobar
-    // this.egog.selectAll(".wnode")
-    //   .data(viewgraph.ego_timeline)
-    //   .enter().append("circle")
-    //   .attr("cx", d => xScale(d.year))
-    //   .attr("cy", yPos)
-    //   .attr("r", d => d.count);
-
 
     const nodes = [], links = [];
     // WIKI nodes
@@ -196,11 +193,23 @@ class ThinkersEgoNet {
       nodes.push(viewgraph.nodes_f[i]);
     }
 
+    var ego_born = {
+      id: "ego_born",
+      born: ego_node.born,
+      savedFx: xScale(ego_node.born),
+      fx: xScale(ego_node.born),
+      fy: yPos,
+      type: "f",
+      r: 0.005,
+      node: "ego",
+    }
+    nodes.push(ego_born);
+
     // WIKI edges
     for (var i = 0; i < viewgraph.links_w.length; i++) {
       var d = viewgraph.links_w[i];
       d.type = "w";
-      if (d.source === ego_node || d.target === ego_node) // filter only direct edges
+      if (d.source === ego_node.pageid || d.target === ego_node.pageid) // filter only direct edges
         links.push(Object.create(d));
     }
     // MAG edges
@@ -234,7 +243,11 @@ class ThinkersEgoNet {
       .data(links)
       .enter().append("path")
       .attr("id", d => d.source.index + "_" + d.target.index)
-      .attr("class", "wlink")
+      .attr("class", function(d) {
+        if (d.type === "w") return "wlink show";
+        else return "wlink";
+      })
+      .attr("stroke-width", d => d.value/2)
       // .attr("marker-start", "url(#arrow)");
 
     allNodes = this.nodeg.selectAll(".wnode")
@@ -244,7 +257,7 @@ class ThinkersEgoNet {
       .attr("title", d => d.name)
       .attr("data_authorid", d => d.authorid)
       .attr("class", function(d) {
-        if (d.id === ego_node) return "wnode egonode"
+        if (d.id === ego_node.pageid) return "wnode egonode"
         else if (getYear(d.born) < 1750) return "wnode old";
         else return "wnode";
       })
@@ -266,7 +279,7 @@ class ThinkersEgoNet {
       .enter().append("text")
       .attr("id", d => d.id)
       .attr("class", function(d) {
-        if (d.id === ego_node) return "wlabel egonode show";
+        if (d.id === ego_node.pageid) return "wlabel egonode show";
         else if (nodeRadiusWiki(d.centrality) > 100) return "wlabel show";
         else return "wlabel";
       })
@@ -283,7 +296,10 @@ class ThinkersEgoNet {
             else return d.y-egoH+5;
           })
       allLinks
-          .attr("d", d=> wikiLinkArc(d))
+          .attr("d", function(d) {
+            if (d.type === "w") return wikiLinkArc(d);
+            else return magLinkArc(d);
+          })
     });
 
     this.rect.on("click", function() {
