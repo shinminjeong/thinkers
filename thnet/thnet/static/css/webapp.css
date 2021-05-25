@@ -232,6 +232,26 @@ table {
   padding-top: 5px;
 }
 
+#ego-info img {
+  width: 120px;
+  height: 120px;
+  object-fit:cover;
+  border-radius:50%;
+  margin: 10px 5px 0 100px;
+}
+#ego-info h4 {
+  font-weight: bold;
+  padding: 5px 0 0 5px;
+}
+#ego-info table {
+  vertical-align: top;
+  height: auto;
+}
+table th,
+table td {
+  padding: 5px;
+}
+
 #selectiontable tr {
   color: black;
   background: none;
@@ -288,72 +308,6 @@ div#citation-range .noUi-connect {
 
 #flower-container { margin-top:0; }
 
-.nav-tabs {
-  border-bottom: none;
-}
-.nav-tabs>li>a.tab-btn{
-  padding: 8px 0;
-  border-radius: 0 0 5px 5px;
-  color:#000; background-color:transparent;
-  border-left: 1px solid #ddd;
-  border-bottom: 5px #49BEAA solid;
-  border-top: none;
-  text-align: center;
-  width: 140px;
-  font-size: 16px;
-  margin: 0;
-}
-.nav-tabs>li.active>a,
-.nav-tabs>li.active>a:focus,
-.nav-tabs>li.active>a:hover,
-.nav-tabs>li.active>a.tab-btn,
-.nav-tabs>li>a.tab-btn:hover{
-  color:#000; background-color:#f4f4f4;
-  border-bottom: 5px #49BEAA solid;
-}
-
-img.fit-wrapper {
-  max-width: 100%;
-  max-height: 100%;
-}
-.field ul {
-  margin: 0;
-  padding-left: 15px;
-}
-.field li {
-  white-space: nowrap;
-}
-
-table th {
-  background-color: #001F3F80;
-}
-
-table td {
-  padding: 5px;
-}
-
-table th {
-  padding: 5px;
-}
-
-.innertable {
-  box-shadow: inset 0px 2px 1px 0px #bbb;
-}
-.innertable div {
-  padding: 8 50 3 50;
-}
-
-.innertable,
-.innertable div,
-.innertable table.dataTable thead th,
-.innertable table.dataTable thead tr,
-.innertable table.dataTable tbody tr {
-  background-color: #edf5f9;
-}
-.innertable table.dataTable thead th {
-  white-space: nowrap;
-}
-
 
 .wnode {
   stroke: #ddd;
@@ -364,6 +318,11 @@ table th {
   fill: red;
 }
 .wnode.old {
+  fill: #ccc;
+}
+.wnode.paper {
+  stroke: #ddd;
+  stroke-width: 1;
   fill: #ccc;
 }
 .wnode.unselected {
@@ -446,95 +405,6 @@ text {
   padding-bottom:25;
 }
 
-
-
-
-/*    ------ Stylesheet for browse.html ------    */
-.info-box {
-  min-height: 60px;
-  max-height: auto;
-  border: 1px solid gray;
-  width: 260px;
-  float: left;
-  margin: 5px 0px 5px 20px;
-  color: black;
-}
-.info-box-icon {
-  width: 58px;
-  height: 58px;
-  padding: 5px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover;
-}
-.info-box-img {
-  width: 58px;
-  height: 58px;
-  padding: 2px;
-  display: inline;
-}
-.info-box-content {
-  margin-left: 65px;
-  height: 58px;
-  padding: 9px 5px;
-}
-.info-box-text {
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.info-box-more {
-  position: absolute;
-  z-index: 900;
-  padding: 3px 10px;
-  margin: -1px;
-  width: 260px;
-  overflow-y: scroll;
-  border: 1px solid gray;
-  border-top: 1px solid #ddd;
-  background-color: white;
-}
-.align-buttons {
-  position: fixed;
-  z-index: 1000;
-  margin-top: 10px;
-  right: 10px;
-}
-
-/* The Close Button */
-.close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-}
-
-.close:hover,
-.close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-
-
-/*    ---     Misc.     ---     */
-.cntr{
-  justify-content: center;
-  display: flex;
-}
-
-
-td{
-  cursor: pointer;
-}
-tr:hover td{
-/*
-  background: #ddd;
-  */
-  background: none;
-}
 
 /* The node info modal (background) */
 .node_info_modal {

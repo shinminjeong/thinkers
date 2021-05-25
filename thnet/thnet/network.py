@@ -5,6 +5,7 @@ from itertools import product, permutations
 from operator import itemgetter
 from collections import Counter
 from .search import *
+from .wikiparser import parse_page
 
 cur_path = os.path.dirname(os.path.abspath(__file__))
 def search_philosopher_from_MAG():
@@ -50,14 +51,17 @@ def load_philosopher_net():
     data = clean(data)
 
     for i, p in enumerate(data):
-        pid = p["pageid"]
-        ptime = p["born"] if p["born"] else 0
-        pname = p["name"] if p["name"] else ""
-        pschool = ",".join([create_school_map(s["pageid"], s["name"]) for s in p["school"]]) if p["school"] else ""
+        p_id = p["pageid"]
+        p_time = p["born"] if p["born"] else 0
+        p_name = p["name"] if p["name"] else ""
+        p_url = p["url"] if p["url"] else ""
+        p_img = p["img"] if p["img"] else ""
+        p_school = ",".join([create_school_map(s["pageid"], s["name"]) for s in p["school"]]) if p["school"] else ""
+        G.add_node(p_id, born=p_time, name=p_name, school=p_school, url=p_url, img=p_img)
         if "MAG_id" in p:
-            G.add_node(pid, born=ptime, name=pname, school=pschool, authorid=p["MAG_id"], pcount=p["MAG_pcount"], ccount=p["MAG_ccount"])
-        else:
-            G.add_node(pid, born=ptime, name=pname, school=pschool)
+            G.nodes[p_id]["authorid"]=p["MAG_id"]
+            G.nodes[p_id]["pcount"]=p["MAG_pcount"]
+            G.nodes[p_id]["ccount"]=p["MAG_ccount"]
 
     for i, p in enumerate(data):
         if p["influenced"]:
@@ -234,10 +238,24 @@ def get_th_egonet(pageid):
 
     return node_info, edge_info
 
+def get_ph_info(url):
+    return parse_page(url)
+
+def agg_citation(citations):
+    data = {k["year"]:0 for k in citations}
+    for values in citations:
+        for v in values["value"]:
+            data[v["year"]] += v["value"]
+    return [{"year":y, "value":v} for y, v in data.items()]
+
 def get_arcnet(pageid):
+    load_philosopher_net()
     print("get_egonet", pageid)
     G = nx.read_gexf("data/philosophers.gexf")
     egoG = nx.ego_graph(G, pageid, undirected=True)
+    ego_url = G.nodes[pageid]["url"]
+    ego_image = G.nodes[pageid]["img"]
+    ego_info = get_ph_info(ego_url)
 
     ntime = nx.get_node_attributes(G, "born")
     n_name = nx.get_node_attributes(G, "name")
@@ -259,17 +277,17 @@ def get_arcnet(pageid):
 
     ego_authorid = n_authorid[pageid]
     flower_data = json.load(open("data/flowers/{}.json".format(ego_authorid), "r"))
-    # print(flower_data)
+    print(flower_data["pub_chart"])
 
     radius_scale = 1500
     node_info_f = {}
     edge_info_f = []
     pub_timeline = []
-    for i, f in enumerate(flower_data):
+    for i, f in enumerate(flower_data["flower"]):
         for y in f["year"]:
             pubyear = y["publication_year"]
             infyear = y["influence_year"]
-            name = f["entity_name"]
+            aid, name = f["entity_name"].split(";")
             idx = i+1
             if y["influencing"] > 0:
                 node_id = "{}_{}_{}".format(name, pubyear, idx)
@@ -280,16 +298,18 @@ def get_arcnet(pageid):
                         "id": "{}_{}_{}".format(name, pubyear, idx),
                         "node": "alt",
                         "index": idx,
+                        "authorid": int(aid),
                         "name": name,
                         "born": born_time(pubyear),
                         "r": y["influencing"]/radius_scale
                     }
                 pub_timeline.append(infyear)
-                print(infyear, "<--", pubyear, name, y)
+                # print(infyear, "<--", pubyear, name, y)
                 edge_info_f.append({
                     "source": "{}_{}_{}".format(name, pubyear, idx),
                     "target": "ego_{}".format(infyear),
                     "direction": "influencing",
+                    "parent": int(aid),
                     "value": y["influencing"]
                 })
             if y["influenced"] > 0:
@@ -301,16 +321,18 @@ def get_arcnet(pageid):
                         "id": "{}_{}_{}".format(name, infyear, idx),
                         "node": "alt",
                         "index": idx,
+                        "authorid": int(aid),
                         "name": name,
                         "born": born_time(infyear),
                         "r": y["influenced"]/radius_scale
                     }
                 pub_timeline.append(pubyear)
-                print(infyear, "-->", pubyear, name, y)
+                # print(infyear, "-->", pubyear, name, y)
                 edge_info_f.append({
                     "source": "{}_{}_{}".format(name, infyear, idx),
                     "target": "ego_{}".format(pubyear),
                     "direction": "influenced",
+                    "parent": int(aid),
                     "value": y["influenced"]
                 })
 
@@ -320,17 +342,28 @@ def get_arcnet(pageid):
             "id": "ego_{}".format(pubyear, idx),
             "node": "ego",
             "index": 0,
+            "authorid": ego_authorid,
+            "name": n_name[pageid],
             "born": born_time(pubyear),
             "r": pub_cnt[pubyear]/radius_scale
         }
-    # print("node_info_w", node_info_w)
-    # print("edge_info_w", edge_info_w)
-    # print("node_info_f", node_info_f.values())
-    # print("edge_info_f", edge_info_f)
 
-    egonode = {"pageid": pageid, "authorid": ego_authorid, "born": ntime[pageid]}
+    egonode = {
+        "pageid": pageid,
+        "authorid": ego_authorid,
+        "born": ntime[pageid],
+        "ego_info": ego_info,
+        "ego_url": ego_url,
+        "ego_image": ego_image,
+    }
 
-    return egonode, node_info_w, edge_info_w, list(node_info_f.values()), edge_info_f
+    charts = {
+        "pub_chart": flower_data["pub_chart"],
+        "cite_chart": agg_citation(flower_data["cite_chart"]),
+        "cite_detail": flower_data["cite_chart"]
+    }
+
+    return egonode, charts, node_info_w, edge_info_w, list(node_info_f.values()), edge_info_f
 
 def get_thnet(time):
     # search_philosopher_from_MAG()
