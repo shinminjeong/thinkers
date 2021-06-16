@@ -58,19 +58,19 @@ function createInfoTable(wikiinfo) {
   var td_l = document.createElement("TD");
   var td_r = document.createElement("TD");
   var infoimg = document.createElement("IMG");
-  infoimg.src = ego_node.ego_image;
+  infoimg.src = ego_node.image;
   td_l.appendChild(infoimg);
 
   var title = document.createElement("H4");
-  title.innerHTML = ego_node.ego_info.title;
+  title.innerHTML = ego_node.info.title;
   td_r.appendChild(title);
 
-  for (var h in ego_node.ego_info.basic_info) {
+  for (var h in ego_node.info.basic_info) {
     var tr = document.createElement("TR");
     var thead = document.createElement("TH");
     var tdesc = document.createElement("TD");
     thead.innerHTML = h;
-    tdesc.innerHTML = ego_node.ego_info.basic_info[h];
+    tdesc.innerHTML = ego_node.info.basic_info[h];
     console.log(thead, tdesc)
     tr.appendChild(thead);
     tr.appendChild(tdesc);

@@ -43,15 +43,15 @@ def flower(request):
 def arc(request):
     pageid = request.GET.get('id')
 
-    egonode, charts, node_w, edge_w, node_f, edge_f = get_arcnet(pageid)
-    author_nodes, author_edges = calculate_author_net(egonode, node_w, node_f, edge_w, edge_f)
+    egonode, charts, node_a, edge_a = get_arcnet(pageid)
+    # author_nodes, author_edges = calculate_author_net(egonode, node_w, node_f, edge_w, edge_f)
     data = {
         "ego_node": egonode,
         "charts": charts,
-        "node_info": author_nodes,
-        "edge_info": author_edges,
-        "papers_n": node_f,
-        "papers_e": edge_f
+        "node_info": node_a,
+        "edge_info": edge_a,
+        "papers_n": [],
+        "papers_e": []
     }
 
     return render(request, "arc.html", data)

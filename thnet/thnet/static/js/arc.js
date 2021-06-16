@@ -1,7 +1,7 @@
 var color = d3.scaleOrdinal(d3.schemeSet3);
 var simulation, xScale, vis, allNodes, allLinks, allLabels;
 var xAxisG = [];
-var ticksize = 10, yPos = 150, egoH = 150;
+var ticksize = 10, yPos = 100, egoH = 120;
 
 function getYear(time) {
   return time/(3600*24*365)+1970;
@@ -34,10 +34,14 @@ function createXAxisBottom(scale) {
 function updateGraph(newXScale) {
   simulation.stop();
   d3.selectAll(".bar-pub").each(function(d) {
-    d3.select(this).attr("x", newXScale(getTime(d.year)));
+    d3.select(this)
+      .attr("x", newXScale(getTime(d.year)))
+      .attr("width", tickWidth(newXScale));
   });
   d3.selectAll(".cit-pub").each(function(d) {
-    d3.select(this).attr("x", newXScale(getTime(d.year)));
+    d3.select(this)
+      .attr("x", newXScale(getTime(d.year)))
+      .attr("width", tickWidth(newXScale));
   });
 
   allNodes.each(function(d, i) {
@@ -90,26 +94,17 @@ function nodeRadiusWiki(score) {
   return Math.sqrt(score * 5000 * 3.14)
 }
 
-function wikiLinkArc(d) {
-  var sx = d.source.x, sy = d.source.y,
-      tx = d.target.x, ty = d.target.y;
-  var dx = tx-sx, dy = ty-sy,
-      dr = dx/2;
-
-  if (dx > 0) // to draw upper arc for wiki edges
-    return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,1 " + tx + "," + ty;
-  else return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
-}
-
-function magLinkArc(d) {
+function linkArc(d) {
   var sx = d.source.x, sy = d.source.y,
       tx = d.target.x, ty = d.target.y;
   var dx = tx-sx, dy = ty-sy,
       dr = Math.sqrt(dx * dx + dy * dy);
 
-  if (d.direction == "influencing")
-    return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
-  else return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,1 " + tx + "," + ty;
+  return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
+}
+
+function tickWidth(scale) {
+    return scale(getTime(1971)) - scale(getTime(1970));
 }
 
 
@@ -166,6 +161,12 @@ class ThinkersEgoNet {
     // const timerange = [Math.min(tr_w[0], tr_f[0]), Math.max(tr_w[1], tr_f[1])];
     const timerange = tr;
 
+    var egoids = [
+      ego_node.pageid+"_pub",
+      ego_node.pageid,
+      ego_node.pageid+"_mag",
+    ]
+
     // add X axis
     xScale = d3.scaleLinear()
       .domain(timerange).nice()
@@ -192,51 +193,52 @@ class ThinkersEgoNet {
       .data(viewgraph.pub_data)
       .enter().append("rect")
         .attr("class", "bar-pub")
-        .attr("id", function(d) { return d.year; })
-        .attr("x", function(d) { return xScale(getTime(d.year)); })
-        .attr("y", function(d) { return yPos-pub_height+pub_y(d.value); })
-        .attr("width", 10)
-        .attr("height", function(d) { return pub_height-pub_y(d.value); })
+        .attr("id", d => d.year)
+        .attr("x", d => xScale(getTime(d.year)))
+        .attr("y", d => yPos-pub_height+pub_y(d.value))
+        .attr("width", tickWidth(xScale))
+        .attr("height", d => pub_height-pub_y(d.value))
         .style("fill", "#ABBD81")
         .style("cursor", "pointer");
     this.barg.selectAll(".cit-pub")
       .data(viewgraph.cite_data)
       .enter().append("rect")
         .attr("class", "cit-pub")
-        .attr("id", function(d) { return d.year; })
-        .attr("x", function(d) { return xScale(getTime(d.year)); })
-        .attr("y", function(d) { return yPos })
-        .attr("width", 10)
-        .attr("height", function(d) { return cite_height-cit_y(d.value); })
+        .attr("id", d => d.year)
+        .attr("x", d => xScale(getTime(d.year)))
+        .attr("y", yPos)
+        .attr("width", tickWidth(xScale))
+        .attr("height", d => cite_height-cit_y(d.value))
         .style("fill", "#F47E60")
         .style("cursor", "pointer");
 
 
     const nodes = [], links = [];
-    // WIKI nodes
+    // author nodes
     for (var i = 0; i < viewgraph.nodes.length; i++) {
       viewgraph.nodes[i].savedFx = xScale(viewgraph.nodes[i].born);
       viewgraph.nodes[i].fx = xScale(viewgraph.nodes[i].born);
-      if (viewgraph.nodes[i].type === "f") viewgraph.nodes[i].fy = yPos+2*egoH;
+      if (viewgraph.nodes[i].type === "MAG") viewgraph.nodes[i].fy = yPos+2*egoH;
+      else if (viewgraph.nodes[i].type === "PUB") viewgraph.nodes[i].fy = yPos;
       else viewgraph.nodes[i].fy = yPos+egoH;
       nodes.push(viewgraph.nodes[i]);
     }
     // papers
-    for (var i = 0; i < viewgraph.papers_n.length; i++) {
-      viewgraph.papers_n[i].savedFx = xScale(viewgraph.papers_n[i].born);
-      viewgraph.papers_n[i].fx = xScale(viewgraph.papers_n[i].born);
-      if (viewgraph.papers_n[i].node === "ego")
-        viewgraph.papers_n[i].fy = yPos+egoH*5;
-      else
-        viewgraph.papers_n[i].fy = yPos+egoH*5+20*(viewgraph.papers_n[i].index);
-      viewgraph.papers_n[i].type = "paper";
-      nodes.push(viewgraph.papers_n[i]);
-    }
+    // for (var i = 0; i < viewgraph.papers_n.length; i++) {
+    //   viewgraph.papers_n[i].savedFx = xScale(viewgraph.papers_n[i].born);
+    //   viewgraph.papers_n[i].fx = xScale(viewgraph.papers_n[i].born);
+    //   if (viewgraph.papers_n[i].node === "ego")
+    //     viewgraph.papers_n[i].fy = yPos+egoH*5;
+    //   else
+    //     viewgraph.papers_n[i].fy = yPos+egoH*5+20*(viewgraph.papers_n[i].index);
+    //   viewgraph.papers_n[i].type = "paper";
+    //   nodes.push(viewgraph.papers_n[i]);
+    // }
 
     // WIKI edges
     for (var i = 0; i < viewgraph.links.length; i++) {
       var d = viewgraph.links[i];
-      if (d.source === ego_node.pageid || d.target === ego_node.pageid) // filter only direct edges
+      if (egoids.includes(d.source) || egoids.includes(d.target)) // filter only direct edges
         links.push(Object.create(d));
     }
     console.log(viewgraph.links);
@@ -279,7 +281,7 @@ class ThinkersEgoNet {
         }
       })
       .attr("stroke-width", d => d.value/2)
-      // .attr("marker-start", "url(#arrow)");
+      .attr("marker-start", "url(#arrow)");
 
     allNodes = this.nodeg.selectAll(".wnode")
       .data(nodes)
@@ -289,12 +291,11 @@ class ThinkersEgoNet {
       .attr("data_authorid", d => d.authorid)
       .attr("class", function(d) {
         if (d.type === "paper") return "wnode paper";
-        else if (d.id === ego_node.pageid)  return "wnode egonode";
-        else if (getYear(d.born) < 1750) return "wnode old";
+        else if (egoids.includes(d.id))  return "wnode egonode";
         else return "wnode";
       })
       .attr("r", function(d) {
-        if (d.id === ego_node.pageid) return 10;
+        if (egoids.includes(d.id)) return 10;
         else return nodeRadiusWiki(d.r);
       })
       .on("click", function() {
@@ -314,9 +315,7 @@ class ThinkersEgoNet {
       .enter().append("text")
       .attr("id", d => d.id)
       .attr("class", function(d) {
-        if (d.id === ego_node.pageid) return "wlabel egonode show";
-        else if (nodeRadiusWiki(d.r) > 100) return "wlabel show";
-        else return "wlabel";
+        return "wlabel";
       })
       .text(d => d.name);
 
@@ -331,8 +330,7 @@ class ThinkersEgoNet {
           })
       allLinks
           .attr("d", function(d) {
-            if (d.type === "f") return magLinkArc(d);
-            else return wikiLinkArc(d);
+            return linkArc(d);
           })
     });
 

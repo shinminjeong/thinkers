@@ -183,7 +183,7 @@ def school_analysis(data, filtered_nodes):
     return top_schools
 
 
-def ref_edge(G, aidmap, filtered_nodes):
+def ref_edge(G, filtered_nodes):
     edge_info = []
     for u, v in G.edges():
         if u not in filtered_nodes or v not in filtered_nodes:
@@ -231,7 +231,7 @@ def get_th_egonet(pageid):
         "r": round(pagerank[n], 9),
         "school": n_school[n] if n in n_school else "",
     } for n in filtered_nodes]
-    edge_info = ref_edge(egoG, n_authorid, filtered_nodes)
+    edge_info = ref_edge(egoG, filtered_nodes)
 
     print("node_info", node_info)
     print("edge_info", edge_info)
@@ -248,114 +248,99 @@ def agg_citation(citations):
             data[v["year"]] += v["value"]
     return [{"year":y, "value":v} for y, v in data.items()]
 
+
+def create_edge_f(source, target, dir, parent, value):
+    return {
+        "source": source,
+        "target": target,
+        "direction": dir,
+        "parent": parent,
+        "value": value
+    }
+
+
 def get_arcnet(pageid):
     load_philosopher_net()
-    print("get_egonet", pageid)
+    print("get_arcnet", pageid)
     G = nx.read_gexf("data/philosophers.gexf")
-    egoG = nx.ego_graph(G, pageid, undirected=True)
-    ego_url = G.nodes[pageid]["url"]
-    ego_image = G.nodes[pageid]["img"]
-    ego_info = get_ph_info(ego_url)
-
-    ntime = nx.get_node_attributes(G, "born")
-    n_name = nx.get_node_attributes(G, "name")
-    n_school = nx.get_node_attributes(G, "school")
-    n_authorid = nx.get_node_attributes(G, "authorid")
-    n_pcount = nx.get_node_attributes(G, "pcount")
-    n_ccount = nx.get_node_attributes(G, "ccount")
-    filtered_nodes = [n for n in egoG.nodes() if n in ntime]
-
+    N = G.nodes
     pagerank = nx.pagerank(G)
-    node_info_w = [{
+    egoG = nx.ego_graph(G, pageid, undirected=True)
+    ego = {
+        "pageid": pageid,
+        "name": N[pageid]["name"],
+        "authorid": N[pageid]["authorid"],
+        "born": N[pageid]["born"],
+        "url": N[pageid]["url"],
+        "image": N[pageid]["img"],
+        "info": get_ph_info(N[pageid]["url"])
+    }
+
+    filtered_nodes = [n for n in egoG.nodes() if "born" in N[n]]
+    node_authors = [{
         "id": n,
-        "name": n_name[n],
-        "authorid": n_authorid[n] if n in n_authorid else 0,
-        "born": ntime[n],
+        "name": N[n]["name"],
+        "authorid": N[n]["authorid"] if "authorid" in N[n] else 0,
+        "type": "WIKI",
+        "born": N[n]["born"],
         "r": round(pagerank[n], 9),
     } for n in filtered_nodes]
-    edge_info_w = ref_edge(egoG, n_authorid, filtered_nodes)
+    edge_authors = ref_edge(egoG, filtered_nodes)
+    flower_data = json.load(open("data/flowers/{}.json".format(ego["authorid"]), "r"))
 
-    ego_authorid = n_authorid[pageid]
-    flower_data = json.load(open("data/flowers/{}.json".format(ego_authorid), "r"))
-    print(flower_data["pub_chart"])
-
+    # add flower data
     radius_scale = 1500
-    node_info_f = {}
-    edge_info_f = []
-    pub_timeline = []
+    wiki_authorids = [a["authorid"] for a in node_authors]
+    flower_ego_id = "{}_mag".format(pageid)
     for i, f in enumerate(flower_data["flower"]):
-        for y in f["year"]:
-            pubyear = y["publication_year"]
-            infyear = y["influence_year"]
-            aid, name = f["entity_name"].split(";")
-            idx = i+1
-            if y["influencing"] > 0:
-                node_id = "{}_{}_{}".format(name, pubyear, idx)
-                if node_id in node_info_f:
-                    node_info_f[node_id]["r"] += y["influencing"]/radius_scale
-                else:
-                    node_info_f[node_id] = {
-                        "id": "{}_{}_{}".format(name, pubyear, idx),
-                        "node": "alt",
-                        "index": idx,
-                        "authorid": int(aid),
-                        "name": name,
-                        "born": born_time(pubyear),
-                        "r": y["influencing"]/radius_scale
-                    }
-                pub_timeline.append(infyear)
-                # print(infyear, "<--", pubyear, name, y)
-                edge_info_f.append({
-                    "source": "{}_{}_{}".format(name, pubyear, idx),
-                    "target": "ego_{}".format(infyear),
-                    "direction": "influencing",
-                    "parent": int(aid),
-                    "value": y["influencing"]
-                })
-            if y["influenced"] > 0:
-                node_id = "{}_{}_{}".format(name, infyear, idx)
-                if node_id in node_info_f:
-                    node_info_f[node_id]["r"] += y["influenced"]/radius_scale
-                else:
-                    node_info_f[node_id] = {
-                        "id": "{}_{}_{}".format(name, infyear, idx),
-                        "node": "alt",
-                        "index": idx,
-                        "authorid": int(aid),
-                        "name": name,
-                        "born": born_time(infyear),
-                        "r": y["influenced"]/radius_scale
-                    }
-                pub_timeline.append(pubyear)
-                # print(infyear, "-->", pubyear, name, y)
-                edge_info_f.append({
-                    "source": "{}_{}_{}".format(name, infyear, idx),
-                    "target": "ego_{}".format(pubyear),
-                    "direction": "influenced",
-                    "parent": int(aid),
-                    "value": y["influenced"]
-                })
+        # create node for each alter
+        aid_s, name = f["entity_name"].split(";")
+        aid = int(aid_s)
+        node_id = "{}_mag".format(aid)
+        pubtimes = [born_time(y["publication_year"]) for y in f["year"] if y["influencing"]>0]
+        inftimes = [born_time(y["influence_year"]) for y in f["year"] if y["influenced"]>0]
+        min_time = min(pubtimes+inftimes)
 
-    pub_cnt = Counter(pub_timeline)
-    for pubyear in pub_timeline:
-        node_info_f["ego_{}".format(pubyear)] = {
-            "id": "ego_{}".format(pubyear, idx),
-            "node": "ego",
-            "index": 0,
-            "authorid": ego_authorid,
-            "name": n_name[pageid],
-            "born": born_time(pubyear),
-            "r": pub_cnt[pubyear]/radius_scale
-        }
+        # if the author also exists in Wiki data
+        # change the min_time to born_time
+        if aid in wiki_authorids:
+            wauthor = [a for a in node_authors if a["authorid"] == aid][0]
+            # print("!!!!!!!!", name, aid, "also exists in Wiki data")
+            # print(wauthor)
+            min_time = wauthor["born"]
 
-    egonode = {
-        "pageid": pageid,
-        "authorid": ego_authorid,
-        "born": ntime[pageid],
-        "ego_info": ego_info,
-        "ego_url": ego_url,
-        "ego_image": ego_image,
-    }
+        if f["influencing"] > 0:
+            edge_authors.append(create_edge_f(node_id, flower_ego_id, "influencing", aid, f["influencing"]))
+        if f["influenced"] > 0:
+            edge_authors.append(create_edge_f(flower_ego_id, node_id, "influenced", aid, f["influenced"]))
+
+        node_authors.append({
+            "id": node_id,
+            "authorid": aid,
+            "type": "MAG",
+            "name": name,
+            "born": min_time,
+            "r": (f["influencing"]+f["influenced"])/radius_scale
+        })
+
+
+    # add egonode for flower
+    node_authors.append({
+        "id": flower_ego_id,
+        "authorid": ego["authorid"],
+        "type": "MAG",
+        "name": ego["name"],
+        "born": ego["born"],
+    })
+
+    # add egonode for publication timeline
+    node_authors.append({
+        "id": "{}_pub".format(pageid),
+        "authorid": ego["authorid"],
+        "type": "PUB",
+        "name": ego["name"],
+        "born": ego["born"],
+    })
 
     charts = {
         "pub_chart": flower_data["pub_chart"],
@@ -363,7 +348,7 @@ def get_arcnet(pageid):
         "cite_detail": flower_data["cite_chart"]
     }
 
-    return egonode, charts, node_info_w, edge_info_w, list(node_info_f.values()), edge_info_f
+    return ego, charts, node_authors, edge_authors
 
 def get_thnet(time):
     # search_philosopher_from_MAG()
@@ -396,7 +381,7 @@ def get_thnet(time):
         "centrality": round(pagerank[n], 9),
         "school": n_school[n] if n in n_school else "",
     } for n in filtered_nodes]
-    edge_info = ref_edge(G, n_authorid, filtered_nodes)
+    edge_info = ref_edge(G, filtered_nodes)
 
     return node_info, edge_info, schools
 
