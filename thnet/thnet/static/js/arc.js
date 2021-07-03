@@ -1,7 +1,7 @@
 var color = d3.scaleOrdinal(d3.schemeSet3);
 var simulation, xScale, vis, allNodes, allLinks, allLabels;
 var xAxisG = [];
-var ticksize = 10, yPos = 100, egoH = 120;
+var ticksize = 10, yPos = 100, egoH = 150;
 
 function getYear(time) {
   return time/(3600*24*365)+1970;
@@ -48,6 +48,49 @@ function updateGraph(newXScale) {
     d.fx = newXScale(d.born);
   });
   simulation.alpha(1).restart();
+}
+
+function nodeClicked(node) {
+  console.log("nodeClicked", node.id, node.getAttribute("title"), node);
+  var paperg = vis.append("g");
+
+  // ego
+  console.log(ego_node);
+  console.log(charts.pub_chart);
+  paperg.append("rect")
+    .attr("x", xScale(ego_node.born))
+    .attr("y", yPos+egoH*1.3-3)
+    .attr("width", xScale(getTime(80))-xScale(getTime(0)))
+    .attr("height", 6)
+    .attr("fill", "#ddd");
+  for (var i in charts.pub_chart) {
+    paperg.append("circle")
+      .attr("cx", xScale(getTime(charts.pub_chart[i].year)))
+      .attr("cy", yPos+egoH*1.3)
+      .attr("fill", "#ddd")
+      .attr("opacity", 0.5)
+      .attr("r", charts.pub_chart[i].value);
+  }
+
+  // selected alter
+  papers = node.getAttribute("data_inftimes").split(",");
+  paperg.append("rect")
+    .attr("x", xScale(+papers[0]-20*(3600*24*365)))
+    .attr("y", yPos+egoH*1.7-3)
+    .attr("width", xScale(getTime(80))-xScale(getTime(0)))
+    .attr("height", 6)
+    .attr("fill", "#ddd");
+
+  for (var i in papers) {
+    paperg.append("circle")
+      .attr("cx", xScale(+papers[i]))
+      .attr("cy", yPos+egoH*1.7)
+      .attr("fill", "#ddd")
+      .attr("opacity", 0.5)
+      .attr("r", Math.random()*10*Math.random());
+  }
+
+
 }
 
 function nodeSelected(node) {
@@ -289,6 +332,8 @@ class ThinkersEgoNet {
       .attr("id", d => d.id)
       .attr("title", d => d.name)
       .attr("data_authorid", d => d.authorid)
+      .attr("data_pubtimes", d => d.pubtimes)
+      .attr("data_inftimes", d => d.inftimes)
       .attr("class", function(d) {
         if (d.type === "paper") return "wnode paper";
         else if (egoids.includes(d.id))  return "wnode egonode";
@@ -299,7 +344,7 @@ class ThinkersEgoNet {
         else return nodeRadiusWiki(d.r);
       })
       .on("click", function() {
-        nodeSelected(this);
+        nodeClicked(this);
       })
       .on("mouseover", function() {
         showLabel(this);

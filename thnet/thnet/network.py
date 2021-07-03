@@ -320,6 +320,8 @@ def get_arcnet(pageid):
             "type": "MAG",
             "name": name,
             "born": min_time,
+            "pubtimes": pubtimes,
+            "inftimes": inftimes,
             "r": (f["influencing"]+f["influenced"])/radius_scale
         })
 
