@@ -237,7 +237,7 @@ table {
   height: 120px;
   object-fit:cover;
   border-radius:50%;
-  margin: 10px 5px 0 100px;
+  margin: 10px 20px 0 80px;
 }
 #ego-info h4 {
   font-weight: bold;
@@ -334,6 +334,11 @@ div#citation-range .noUi-connect {
 }
 .wnode.influences {
   fill: lime;
+}
+
+.grid {
+  stroke-width: 0.3;
+  stroke: #ddd;
 }
 
 .wlink {

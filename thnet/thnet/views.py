@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 import networkx as nx
-from .network import get_thnet, get_th_egonet, get_arcnet
+from .network import get_thnet, get_th_egonet, get_seqnet, get_arcnet
 from .flower import make_flower
 
 def main(request):
@@ -55,6 +55,22 @@ def arc(request):
     }
 
     return render(request, "arc.html", data)
+
+def seq(request):
+    pageid = request.GET.get('id')
+
+    egonode, charts, node_a, edge_a = get_seqnet(pageid)
+    # author_nodes, author_edges = calculate_author_net(egonode, node_w, node_f, edge_w, edge_f)
+    data = {
+        "ego_node": egonode,
+        "charts": charts,
+        "node_info": node_a,
+        "edge_info": edge_a,
+        "papers_n": [],
+        "papers_e": []
+    }
+
+    return render(request, "seq.html", data)
 
 
 def calculate_author_net(egonode, node_w, node_f, edge_w, edge_f):
