@@ -254,6 +254,7 @@ def create_edge_f(source, target, dir, parent, value):
         "source": source,
         "target": target,
         "direction": dir,
+        "type": "MAG",
         "parent": parent,
         "value": value
     }

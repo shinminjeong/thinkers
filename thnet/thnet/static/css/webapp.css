@@ -342,23 +342,23 @@ div#citation-range .noUi-connect {
 }
 
 .wlink {
-  stroke: #bbb;
+  stroke: #333;
   stroke-opacity: 1;
-  stroke-width: 0.5;
+  stroke-width: 1;
   fill: none;
 }
 .wlink.unselected {
   stroke: #eee;
 }
-.wlink.influenced-by {
-  stroke: orange;
+.wlink.influenced {
+  stroke: #e48268;
   stroke-opacity: 1;
-  stroke-width: 0.5;
+  stroke-width: 1;
 }
-.wlink.influences {
-  stroke: lime;
+.wlink.influencing {
+  stroke: #6bacd0;
   stroke-opacity: 1;
-  stroke-width: 0.5;
+  stroke-width: 1;
 }
 .wlabel {
   font-weight: normal;

@@ -28,7 +28,7 @@ function createXAxis(scale) {
 function tickScaleSeq(d) {
   if (sortedNodes[d] == undefined) return "";
   var yearsAd = getYear(sortedNodes[d].born);
-  if (sortedNodes[d].yearGap < 2) return "";
+  if (sortedNodes[d].yearGap < Math.sqrt(sortedNodes.length)/3) return "";
   if(yearsAd >= 0) {
       return yearsAd + "";
   } else {
@@ -66,8 +66,7 @@ function nodeClicked(node) {
   var paperg = vis.append("g");
 
   // ego
-  console.log(ego_node);
-  console.log(charts.pub_chart);
+  // console.log(ego_node);
   paperg.append("rect")
     .attr("x", xScale(ego_node.born))
     .attr("y", yPos+seqH*1.3-3)
@@ -151,10 +150,35 @@ function nodeRadiusWiki(score) {
 function linkArc(d) {
   var sx = d.source.x, sy = d.source.y,
       tx = d.target.x, ty = d.target.y;
-  var dx = tx-sx, dy = ty-sy,
-      dr = Math.sqrt(dx * dx + dy * dy);
+  var arcSize = 10, gap = 3, dir = 0;
+  if (d.direction === "influencing") {
+    sx = sx-gap, sy = sy+gap, tx = tx-gap, ty = ty+gap;
+  } else {
+    sx = sx+gap, sy = sy-gap, tx = tx+gap, ty = ty-gap;
+  }
 
-  return "M" + sx + "," + sy + "A" + dr + "," + dr + " 0 0,0 " + tx + "," + ty;
+  if (d.type === "MAG") {
+    if (sx < tx) {
+      return "M" + sx + "," + sy + "L" + (tx-arcSize) + "," + sy
+        + "A" + arcSize + "," + arcSize + " 0 0,1 "
+        + tx + "," + (sy+arcSize) + "L" + tx + "," + ty;
+    } else {
+      return "M" + sx + "," + sy + "L" + sx + "," + (ty+arcSize)
+        + "A" + arcSize + "," + arcSize + " 0 0,0 "
+        + (sx-arcSize) + "," + ty + "L" + tx + "," + ty;
+    }
+  } else {
+    arcSize = -arcSize;
+    if (sx > tx) {
+      return "M" + sx + "," + sy + "L" + (tx-arcSize) + "," + sy
+        + "A" + arcSize + "," + arcSize + " 0 0,1 "
+        + tx + "," + (sy+arcSize) + "L" + tx + "," + ty;
+    } else {
+      return "M" + sx + "," + sy + "L" + sx + "," + (ty+arcSize)
+        + "A" + arcSize + "," + arcSize + " 0 0,0 "
+        + (sx-arcSize) + "," + ty + "L" + tx + "," + ty;
+    }
+  }
 }
 
 function tickWidth(scale) {
@@ -338,16 +362,16 @@ class ThinkersEgoNet {
       .data(links)
       .enter().append("marker")
       .attr("id", "arrow")
-      .attr("viewBox", "0 0 20 20")
-      .attr("refX", 30)
-      .attr("refY", 10)
-      .attr("markerWidth", 20)
-      .attr("markerHeight", 20)
+      .attr("viewBox", "0 0 10 10")
+      .attr("refX", 15)
+      .attr("refY", 5)
+      .attr("markerWidth", 10)
+      .attr("markerHeight", 10)
       .attr("markerUnits", "strokeWidth")
       .attr("orient", "auto-start-reverse")
     .append("path")
-      .attr("d", "M0,0L0,20L20,10")
-      .style("fill", "#ccc");
+      .attr("d", "M0,0L0,10L10,5")
+      .style("fill", "#333");
 
 
     // draw force directed network
@@ -359,9 +383,10 @@ class ThinkersEgoNet {
       .enter().append("path")
       .attr("id", d => d.source.index + "_" + d.target.index)
       .attr("class", function(d) {
-        if (d.type === "w") {
-          return "wlink";
-        } else { // MAG edges
+        if (d.type === "MAG") {
+          console.log(d.type, d.direction);
+          return "wlink " + d.direction;
+        } else {
           return "wlink";
         }
       })
