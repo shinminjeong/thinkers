@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 import networkx as nx
 from .network import get_thnet, get_th_egonet, get_seqnet, get_arcnet
+from .network import read_wiki_data, read_mag_data
 from .flower import make_flower
 
 def main(request):
@@ -20,10 +21,21 @@ def main(request):
 
 @csrf_exempt
 def get_author_info(request):
-    print("!!!get_author_info", request.POST)
-    a_from = request.POST.get("from_id")
-    a_to = request.POST.get("to_id")
-    return JsonResponse({"data": 0})
+    # print("!!!get_author_info", request.POST)
+    ego_id = request.POST.get("egoid")
+    node = json.loads(request.POST.get("nodeinfo"))
+    # print("ego_id", ego_id, "Node", node, node["id"])
+    wiki_data = {}
+    mag_data = {}
+    if node["type"] == "WIKI":
+        wiki_data = read_wiki_data(node["id"])
+    elif node["type"] == "MAG":
+        mag_data = read_mag_data(ego_id, node["authorid"])
+    else: ## BOTH
+        wiki_data = read_wiki_data(node["id"])
+        mag_data = read_mag_data(ego_id, node["authorid"])
+
+    return JsonResponse({"wiki": wiki_data, "mag": mag_data})
 
 
 def flower(request):

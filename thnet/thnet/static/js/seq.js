@@ -65,39 +65,63 @@ function nodeClicked(node) {
   console.log("nodeClicked", node.id, node.getAttribute("title"), node);
   var paperg = vis.append("g");
 
-  // ego
-  // console.log(ego_node);
-  paperg.append("rect")
-    .attr("x", xScale(ego_node.born))
-    .attr("y", yPos+seqH*1.3-3)
-    .attr("width", xScale(getTime(80))-xScale(getTime(0)))
-    .attr("height", 6)
-    .attr("fill", "#ddd");
-  for (var i in charts.pub_chart) {
-    paperg.append("circle")
-      .attr("cx", xScale(getTime(charts.pub_chart[i].year)))
-      .attr("cy", yPos+seqH*1.3)
-      .attr("fill", "#ddd")
-      .attr("opacity", 0.5)
-      .attr("r", charts.pub_chart[i].value);
+  var egoNode = sortedNodes[sortedNodes.findIndex(d => d.id === ego_node.pageid)];
+  var alterNode = sortedNodes[sortedNodes.findIndex(d => d.id === node.id)];
+
+  papers = alterNode.inftimes;
+  if (papers != undefined) {
+    // papers of ego
+    paperg.append("rect")
+      .attr("x", xScale(ego_node.born))
+      .attr("y", yPos+30-3)
+      .attr("width", xScale(getTime(80))-xScale(getTime(0)))
+      .attr("height", 6)
+      .attr("fill", "#ddd");
+    for (var i in charts.pub_chart) {
+      paperg.append("circle")
+        .attr("cx", xScale(getTime(charts.pub_chart[i].year)))
+        .attr("cy", yPos+30)
+        .attr("fill", "#ddd")
+        .attr("opacity", 0.5)
+        .attr("r", charts.pub_chart[i].value);
+    }
+
+    console.log("alterNode", alterNode, papers);
+    // papers of the selected alter
+    paperg.append("rect")
+      .attr("x", xScale(+papers[0]-20*(3600*24*365)))
+      .attr("y", yPos+50-3)
+      .attr("width", xScale(getTime(80))-xScale(getTime(0)))
+      .attr("height", 6)
+      .attr("fill", "#ddd");
+
+    for (var i in papers) {
+      paperg.append("circle")
+        .attr("cx", xScale(+papers[i]))
+        .attr("cy", yPos+50)
+        .attr("fill", "#ddd")
+        .attr("opacity", 0.5)
+        .attr("r", Math.random()*10*Math.random());
+    }
   }
 
-  // selected alter
-  papers = node.getAttribute("data_inftimes").split(",");
-  paperg.append("rect")
-    .attr("x", xScale(+papers[0]-20*(3600*24*365)))
-    .attr("y", yPos+seqH*1.7-3)
-    .attr("width", xScale(getTime(80))-xScale(getTime(0)))
-    .attr("height", 6)
-    .attr("fill", "#ddd");
+  // show infobox
+  var info_wiki_x = 0, info_wiki_w = 500;
+  var info_wiki_y = Math.max(window.innerHeight-300-5, 100+Math.max(egoNode.y, alterNode.y));
+  var info_wiki_h = 300;
 
-  for (var i in papers) {
-    paperg.append("circle")
-      .attr("cx", xScale(+papers[i]))
-      .attr("cy", yPos+seqH*1.7)
-      .attr("fill", "#ddd")
-      .attr("opacity", 0.5)
-      .attr("r", Math.random()*10*Math.random());
+  var info_mag_x = Math.min(window.innerWidth-500, Math.max(700, 100+Math.max(egoNode.x, alterNode.x)));
+  var info_mag_h = Math.max(300, Math.min(400,-yPos+Math.max(egoNode.y, alterNode.y)));
+  var info_mag_y = yPos+30, info_mag_w = window.innerWidth-info_mag_x;
+  if (alterNode.type === "WIKI") {
+    showInfoBox_wiki(info_wiki_y, info_wiki_x, info_wiki_w, info_wiki_h, alterNode);
+    hideInfoBox_mag();
+  } else if (alterNode.type === "MAG") {
+    showInfoBox_mag(info_mag_y, info_mag_x, info_mag_w, info_mag_h, alterNode);
+    hideInfoBox_wiki();
+  } else {
+    showInfoBox_wiki(info_wiki_y, info_wiki_x, info_wiki_w, info_wiki_h, alterNode);
+    showInfoBox_mag(info_mag_y, info_mag_x, info_mag_w, info_mag_h, alterNode);
   }
 
 
@@ -144,20 +168,19 @@ function hideLabel(node) {
 }
 
 function nodeRadiusWiki(score) {
-  return Math.sqrt(score * 5000 * 3.14)
+  return Math.max(5, 100 * Math.sqrt(score * 3.14))
 }
 
 function linkArc(d) {
   var sx = d.source.x, sy = d.source.y,
       tx = d.target.x, ty = d.target.y;
   var arcSize = 10, gap = 3, dir = 0;
-  if (d.direction === "influencing") {
-    sx = sx-gap, sy = sy+gap, tx = tx-gap, ty = ty+gap;
-  } else {
-    sx = sx+gap, sy = sy-gap, tx = tx+gap, ty = ty-gap;
-  }
-
   if (d.type === "MAG") {
+    if (d.direction === "influencing") {
+      sx = sx-gap, sy = sy+gap, tx = tx-gap, ty = ty+gap;
+    } else {
+      sx = sx+gap, sy = sy-gap, tx = tx+gap, ty = ty-gap;
+    }
     if (sx < tx) {
       return "M" + sx + "," + sy + "L" + (tx-arcSize) + "," + sy
         + "A" + arcSize + "," + arcSize + " 0 0,1 "
@@ -168,6 +191,11 @@ function linkArc(d) {
         + (sx-arcSize) + "," + ty + "L" + tx + "," + ty;
     }
   } else {
+    if (d.direction === "influenced") {
+      sx = sx-gap, sy = sy+gap, tx = tx-gap, ty = ty+gap;
+    } else {
+      sx = sx+gap, sy = sy-gap, tx = tx+gap, ty = ty-gap;
+    }
     arcSize = -arcSize;
     if (sx > tx) {
       return "M" + sx + "," + sy + "L" + (tx-arcSize) + "," + sy
@@ -182,9 +210,17 @@ function linkArc(d) {
 }
 
 function tickWidth(scale) {
-    return scale(getTime(1971)) - scale(getTime(1970));
+  return scale(getTime(1971)) - scale(getTime(1970));
 }
 
+function capitalize(name) {
+  var words = name.split(' ');
+  for (var i = 0; i < words.length; i++) {
+    words[i] = words[i].charAt(0).toUpperCase() +
+    words[i].substring(1);
+  }
+  return words.join(' ');
+}
 
 class ThinkersEgoNet {
 
@@ -351,12 +387,6 @@ class ThinkersEgoNet {
       if (egoids.includes(d.source) || egoids.includes(d.target)) // filter only direct edges
         links.push(Object.create(d));
     }
-    // MAG edges
-    // for (var i = 0; i < viewgraph.links_f.length; i++) {
-    //   var d = viewgraph.links_f[i];
-    //   d.type = "f";
-    //   links.push(Object.create(d));
-    // }
 
     this.defs.selectAll("marker")
       .data(links)
@@ -383,12 +413,7 @@ class ThinkersEgoNet {
       .enter().append("path")
       .attr("id", d => d.source.index + "_" + d.target.index)
       .attr("class", function(d) {
-        if (d.type === "MAG") {
-          console.log(d.type, d.direction);
-          return "wlink " + d.direction;
-        } else {
-          return "wlink";
-        }
+        return "wlink " + d.direction;
       })
       .attr("stroke-width", d => d.value/2)
       .attr("marker-start", "url(#arrow)");
@@ -429,7 +454,7 @@ class ThinkersEgoNet {
       .attr("class", function(d) {
         return "wlabel";
       })
-      .text(d => d.name);
+      .text(d => capitalize(d.name));
 
     simulation.on("tick", () => {
       allNodes
@@ -448,6 +473,8 @@ class ThinkersEgoNet {
 
     this.rect.on("click", function() {
       resetSelectedNode();
+      hideInfoBox_wiki();
+      hideInfoBox_mag();
     })
 
   }

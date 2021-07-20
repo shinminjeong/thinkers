@@ -14,6 +14,8 @@
     </div>
   </div>
 </div>
+<div id="infobox-wiki" class="info-modal info-wiki"></div>
+<div id="infobox-mag" class="info-modal info-mag"></div>
 </body>
 </html>
 <script src="{% static 'js/d3.v4.min.js' %}"></script>
@@ -40,12 +42,112 @@ var viewgraph = {
 }
 
 var wikiinfo = document.getElementById("ego-info");
+
+var infobox_wiki = document.getElementById("infobox-wiki");
+var infobox_mag = document.getElementById("infobox-mag");
 createInfoTable(wikiinfo);
 
 var thnet = new ThinkersEgoNet("#arc", width, 1200);
 thnet.initGraph();
 thnet.drawGraph(ego_node);
 
+function hideInfoBox_wiki() { infobox_wiki.style.display = "none"; }
+function hideInfoBox_mag() { infobox_mag.style.display = "none"; }
+
+function showInfoBox_wiki(top, left, w, h, alternode) {
+  console.log("showInfoBox_WIKI", alternode);
+  infobox_wiki.style.top = top;
+  infobox_wiki.style.left = left;
+  infobox_wiki.style.width = w;
+  infobox_wiki.style.height = h;
+  infobox_wiki.style.display = "block";
+  getData(alternode);
+}
+
+function showInfoBox_mag(top, left, w, h, alternode) {
+  console.log("showInfoBox_MAG", alternode);
+  infobox_mag.style.top = top;
+  infobox_mag.style.left = left;
+  infobox_mag.style.width = w;
+  infobox_mag.style.height = h;
+  infobox_mag.style.display = "block";
+  getData(alternode);
+}
+
+function updateInfoBox(content) {
+  console.log("updateInfoBox", content)
+  if (Object.keys(content.wiki).length > 0) {
+    var infodiv = document.createElement("TABLE");
+    var tr = document.createElement("TR");
+    var td_l = document.createElement("TD");
+    var td_r = document.createElement("TD");
+    var infoimg = document.createElement("IMG");
+    infoimg.src = content.wiki.image;
+    td_l.appendChild(infoimg);
+
+    var title = document.createElement("H4");
+    title.innerHTML = content.wiki.info.title;
+    td_r.appendChild(title);
+
+    for (var h in content.wiki.info.basic_info) {
+      if (content.wiki.info.basic_info[h] === undefined)
+        continue;
+      var tr = document.createElement("TR");
+      var thead = document.createElement("TH");
+      var tdesc = document.createElement("TD");
+      thead.innerHTML = h;
+      tdesc.innerHTML = content.wiki.info.basic_info[h];
+      tr.appendChild(thead);
+      tr.appendChild(tdesc);
+      td_r.appendChild(tr);
+    }
+    infodiv.appendChild(td_l);
+    infodiv.appendChild(td_r);
+
+    infobox_wiki.replaceChildren(infodiv);
+  }
+
+  if (Object.keys(content.mag).length > 0) {
+    var infodiv = document.createElement("TABLE");
+    var tr = document.createElement("TR");
+    var td_r = document.createElement("TD");
+    var title = document.createElement("H4");
+    title.innerHTML = capitalize(content.mag.name);
+    td_r.appendChild(title);
+
+    var tr_1 = document.createElement("TR");
+    tr_1.innerHTML = "<th>Coauthored:</th><td>"+content.mag.coauthor+"</td>";
+    var tr_2 = document.createElement("TR");
+    tr_2.innerHTML = "<th>Influenced:</th><td>"+content.mag.influenced+"</td>";
+    var tr_3 = document.createElement("TR");
+    tr_3.innerHTML = "<th>Influencing:</th><td>"+content.mag.influencing+"</td>";
+
+    td_r.appendChild(tr_1);
+    td_r.appendChild(tr_2);
+    td_r.appendChild(tr_3);
+
+    infodiv.appendChild(td_r);
+
+    infobox_mag.replaceChildren(infodiv);
+  }
+}
+
+function getData(nodeinfo){
+  console.log("getData", nodeinfo)
+  $.ajax({
+    type: "POST",
+    url: "/get_author_info",
+    data: {
+      "egoid": ego_node.authorid,
+      "nodeinfo": JSON.stringify(nodeinfo)},
+    success: function (result) { // return data if success
+      console.log(nodeinfo.type, result);
+      updateInfoBox(result);
+    },
+    error: function (result) {
+    }
+  });
+}
 
 function createInfoTable(wikiinfo) {
   var infodiv = document.createElement("TABLE");

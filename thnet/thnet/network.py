@@ -183,7 +183,7 @@ def school_analysis(data, filtered_nodes):
     return top_schools
 
 
-def ref_edge(G, filtered_nodes):
+def ref_edge(G, filtered_nodes, egoid=None):
     edge_info = []
     for u, v in G.edges():
         if u not in filtered_nodes or v not in filtered_nodes:
@@ -191,8 +191,11 @@ def ref_edge(G, filtered_nodes):
         edge = {
             "source": u,
             "target": v,
+            "type": "WIKI",
             "value": 1
         }
+        if egoid:
+            edge["direction"] = "influencing" if u == egoid else "influenced"
         edge_info.append(edge)
     # print(sum(e2_sum), sum(e1_sum))
     print("edges", len(G.edges()), len(edge_info))
@@ -260,6 +263,35 @@ def create_edge_f(source, target, dir, parent, value):
     }
 
 
+def read_mag_data(egoid, alterid):
+    flower_data = json.load(open("data/flowers/{}.json".format(egoid), "r"))
+    infdata = [a for a in flower_data["flower"] if a["entity_name"].split(";")[0] == alterid][0]
+    # print("infdata", infdata)
+    aid, name = infdata["entity_name"].split(";")
+    mag_data = {
+        "authorid": aid,
+        "name": name,
+        "coauthor": infdata["coauthor"],
+        "influenced": infdata["influenced"],
+        "influencing": infdata["influencing"]
+    }
+    # print("mag_data", mag_data)
+    return mag_data
+
+def read_wiki_data(id):
+    G = nx.read_gexf("data/philosophers.gexf")
+    sNode = G.nodes[id]
+    wiki_data = {
+        "pageid": id,
+        "name": sNode["name"],
+        "born": sNode["born"],
+        "url": sNode["url"],
+        "image": sNode["img"],
+        "info": get_ph_info(sNode["url"])
+    }
+    return wiki_data
+
+
 def get_seqnet(pageid):
     load_philosopher_net()
     print("get_seqnet", pageid)
@@ -270,7 +302,7 @@ def get_seqnet(pageid):
     ego = {
         "pageid": pageid,
         "name": N[pageid]["name"],
-        "authorid": N[pageid]["authorid"],
+        "authorid": str(N[pageid]["authorid"]),
         "born": N[pageid]["born"],
         "url": N[pageid]["url"],
         "image": N[pageid]["img"],
@@ -281,32 +313,26 @@ def get_seqnet(pageid):
     node_authors = [{
         "id": n,
         "name": N[n]["name"],
-        "authorid": N[n]["authorid"] if "authorid" in N[n] else 0,
+        "authorid": str(N[n]["authorid"]) if "authorid" in N[n] else "",
         "type": "WIKI",
         "born": N[n]["born"],
         "r": round(pagerank[n], 9),
     } for n in filtered_nodes]
 
-    edge_authors = ref_edge(egoG, filtered_nodes)
+    edge_authors = ref_edge(egoG, filtered_nodes, pageid)
     flower_data = json.load(open("data/flowers/{}.json".format(ego["authorid"]), "r"))
 
     # add flower data
-    radius_scale = 1500
+    radius_scale = 5000
     wiki_authorids = [a["authorid"] for a in node_authors]
     flower_ego_id = pageid
     for i, f in enumerate(flower_data["flower"]):
         # create node for each alter
-        aid_s, name = f["entity_name"].split(";")
-        aid = int(aid_s)
+        aid, name = f["entity_name"].split(";")
         node_id = aid
         pubtimes = [born_time(y["publication_year"]) for y in f["year"] if y["influencing"]>0]
         inftimes = [born_time(y["influence_year"]) for y in f["year"] if y["influenced"]>0]
         min_time = min(pubtimes+inftimes)
-
-        if f["influencing"] > 0:
-            edge_authors.append(create_edge_f(flower_ego_id, node_id, "influencing", aid, f["influencing"]))
-        if f["influenced"] > 0:
-            edge_authors.append(create_edge_f(node_id, flower_ego_id, "influenced", aid, f["influenced"]))
 
         # if the author also exists in Wiki data
         # change the min_time to born_time
@@ -314,18 +340,26 @@ def get_seqnet(pageid):
             wauthor = [a for a in node_authors if a["authorid"] == aid][0]
             print("!!!!!!!!", name, aid, "also exists in Wiki data")
             print(wauthor)
-            min_time = wauthor["born"]
+            wauthor["type"] = "BOTH"
+            wauthor["pubtimes"] = pubtimes
+            wauthor["inftimes"] = inftimes
+            node_id = wauthor["id"]
+        else:
+            node_authors.append({
+                "id": node_id,
+                "authorid": aid,
+                "type": "MAG",
+                "name": name,
+                "born": min_time,
+                "pubtimes": pubtimes,
+                "inftimes": inftimes,
+                "r": (f["influencing"]+f["influenced"])/radius_scale
+            })
 
-        node_authors.append({
-            "id": node_id,
-            "authorid": aid,
-            "type": "MAG",
-            "name": name,
-            "born": min_time,
-            "pubtimes": pubtimes,
-            "inftimes": inftimes,
-            "r": (f["influencing"]+f["influenced"])/radius_scale
-        })
+        if f["influencing"] > 0:
+            edge_authors.append(create_edge_f(flower_ego_id, node_id, "influencing", aid, f["influencing"]))
+        if f["influenced"] > 0:
+            edge_authors.append(create_edge_f(node_id, flower_ego_id, "influenced", aid, f["influenced"]))
 
     charts = {
         "pub_chart": flower_data["pub_chart"],
@@ -337,6 +371,7 @@ def get_seqnet(pageid):
 
 
 def get_arcnet(pageid):
+    # search_philosopher_from_MAG()
     load_philosopher_net()
     print("get_arcnet", pageid)
     G = nx.read_gexf("data/philosophers.gexf")
@@ -346,7 +381,7 @@ def get_arcnet(pageid):
     ego = {
         "pageid": pageid,
         "name": N[pageid]["name"],
-        "authorid": N[pageid]["authorid"],
+        "authorid": str(N[pageid]["authorid"]),
         "born": N[pageid]["born"],
         "url": N[pageid]["url"],
         "image": N[pageid]["img"],
@@ -357,22 +392,21 @@ def get_arcnet(pageid):
     node_authors = [{
         "id": n,
         "name": N[n]["name"],
-        "authorid": N[n]["authorid"] if "authorid" in N[n] else 0,
+        "authorid": str(N[n]["authorid"]) if "authorid" in N[n] else "",
         "type": "WIKI",
         "born": N[n]["born"],
         "r": round(pagerank[n], 9),
     } for n in filtered_nodes]
-    edge_authors = ref_edge(egoG, filtered_nodes)
+    edge_authors = ref_edge(egoG, filtered_nodes, pageid)
     flower_data = json.load(open("data/flowers/{}.json".format(ego["authorid"]), "r"))
 
     # add flower data
-    radius_scale = 1500
+    radius_scale = 4000
     wiki_authorids = [a["authorid"] for a in node_authors]
     flower_ego_id = "{}_mag".format(pageid)
     for i, f in enumerate(flower_data["flower"]):
         # create node for each alter
-        aid_s, name = f["entity_name"].split(";")
-        aid = int(aid_s)
+        aid, name = f["entity_name"].split(";")
         node_id = "{}_mag".format(aid)
         pubtimes = [born_time(y["publication_year"]) for y in f["year"] if y["influencing"]>0]
         inftimes = [born_time(y["influence_year"]) for y in f["year"] if y["influenced"]>0]
